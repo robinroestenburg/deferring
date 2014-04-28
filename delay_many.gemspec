@@ -1,19 +1,19 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'raincheck/version'
+require 'delay_many/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'raincheck'
-  spec.version       = Raincheck::VERSION
+  spec.name          = 'delay_many'
+  spec.version       = DelayMany::VERSION
   spec.authors       = ['Robin Roestenburg']
   spec.email         = ['robin@roestenburg.io']
   spec.description   = %q{
-    Raincheck makes it possible to defer saving ActiveRecord associations until
+    DelayMany makes it possible to delay saving ActiveRecord associations until
     the parent object is validated.
   }
-  spec.summary       = %q{Take a rain check on saving ActiveRecord associations}
-  spec.homepage      = 'http://github.com/robinroestenburg/raincheck'
+  spec.summary       = %q{Delay saving ActiveRecord associations until parent is validated}
+  spec.homepage      = 'http://github.com/robinroestenburg/delay_many'
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

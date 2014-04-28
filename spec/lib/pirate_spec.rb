@@ -1,10 +1,41 @@
 require 'spec_helper'
 
 class Person < ActiveRecord::Base
-  has_and_belongs_to_many_deferred :teams
+  has_and_belongs_to_many_deferred :teams, before_add: :before_adding_team,
+                                           after_add: :after_adding_team,
+                                           before_remove: :before_removing_team,
+                                           after_remove: :after_removing_team
+
+  accepts_deferred_nested_attributes_for :teams, allow_destroy: true
+
   validates_presence_of :name
 
   has_many :shoes
+
+  def audit_log
+    @audit_log ||= []
+  end
+
+  def log(audit_line)
+    audit_log << audit_line
+    audit_log
+  end
+
+  def before_adding_team(team)
+    log("Before adding team #{team.id}")
+  end
+
+  def after_adding_team(team)
+    log("After adding team #{team.id}")
+  end
+
+  def before_removing_team(team)
+    log("Before removing team #{team.id}")
+  end
+
+  def after_removing_team(team)
+    log("After removing team #{team.id}")
+  end
 end
 
 class Team < ActiveRecord::Base
@@ -36,69 +67,65 @@ describe Person do
     p.teams << dba << support
     Person.count.should == 2
 
-    p.save!
+    p.save
     Person.count.should == 3
 
-    p = Person.where(name: p.name).first
+    p.reload
     p.teams.size.should == 2
   end
 
   it 'delays updates to existing parent' do
     p = Person.first
     p.teams << dba << support
-    Person.first.teams.size.should == 0
-    p.save!
-    Person.first.teams.size.should == 2
+
+    expect{ p.save }.to change{ Person.first.teams.size }.from(0).to(2)
   end
 
   it 'delays deletes' do
     p = Person.first
     p.team_ids = [dba.id, support.id, operations.id]
     p.save
-    p = Person.first
 
     # TODO: I had to remove the array here.
     p.teams.delete(Team.find(dba.id))
     p.teams.delete(Team.find(operations.id))
 
-    Person.first.teams.size.should == 3
-    p.save
-    Person.first.teams.size.should == 1
+    expect{ p.save }.to change{ Person.first.teams.size }.from(3).to(1)
   end
 
   it 'replaces records' do
     p = Person.first
     p.teams = [Team.find(dba.id)]
-    p.teams.length.should == 1
+    expect(p.teams.length).to eq(1)
     p.teams = [Team.find(support.id), Team.find(operations.id)]
-    p.teams.length.should == 2
-    Person.first.teams.length.should == 0
-    p.save!
-    Person.first.teams.length.should == 2
+    expect(p.teams.length).to eq(2)
+
+    expect{ p.save }.to change{ Person.first.teams.size }.from(0).to(2)
   end
 
-  it "should replace ids" do
+  it 'should replace ids' do
     p = Person.first
     p.teams = [Team.first]
+    expect(p.teams.length).to eq(1)
     p.team_ids = [Team.first.id, Team.last.id]
-    p.teams.length.should == 2
-    Person.first.teams.length.should == 0
-    p.save
-    p = Person.first
-    p.teams.length.should == 2
-    p.teams[0].should == Team.first
-    p.teams[1].should == Team.last
+    expect(p.teams.length).to eq(2)
+
+    expect{ p.save }.to change{ Person.first.teams.size }.from(0).to(2)
+
+    expect(p.teams[0]).to eq(Team.first)
+    expect(p.teams[1]).to eq(Team.last)
   end
 
-  it "should return ids" do
+  it 'should return ids' do
     p = Person.first
     p.teams = [Team.first, Team.last]
-    p.team_ids.length.should == 2
-    p.team_ids.should == [Team.first.id, Team.last.id]
-    p.save
-    p = Person.first
-    p.team_ids.length.should == 2
-    p.team_ids.should == [Team.first.id, Team.last.id]
+    expect(p.team_ids.size).to eq(2)
+    expect(p.team_ids).to include(Team.first.id, Team.last.id)
+
+    expect{ p.save }.to change{ Person.first.team_ids.size }.from(0).to(2)
+
+    expect(p.team_ids.size).to eq(2)
+    expect(p.team_ids).to include(Team.first.id, Team.last.id)
   end
 
   it 'does not create records when parent is not valid' do
@@ -141,7 +168,6 @@ describe Person do
       p.teams.build(name: 'Service Desk')
       expect(p.teams[0]).to be_new_record
       expect(Person.first.teams.size).to eq(0)
-      p p.teams[0]
       p.save
       expect(Person.first.teams.size).to eq(1)
     end
@@ -162,12 +188,96 @@ describe Person do
       expect(Person.first.teams.where(name: 'Operations').first).to eq(operations)
     end
 
-    it 'should know klass' do
-      p = Person.first
-      p.teams = [dba, operations]
-      expect(p.teams.klass).to eq(Team)
-    end
+  end
 
+  xit 'should find one without loading collection' do
+    p = Person.first
+    p.teams = [Team.first, Team.find(3)]
+    p.save
+    teams = Person.first.teams
+    teams.loaded?.should == false
+    teams.find(3).should ==  Team.find(3)
+    teams.first.should == Team.first
+    teams.last.should == Team.find(3)
+    teams.loaded?.should == false
+  end
+
+  xit 'should call before_add, after_add, before_remove, after_remove callbacks' do
+    p = Person.first
+    p.teams = [Team.first, Team.find(3)]
+    p.teams.delete(p.teams[0])
+    p.audit_log.length.should == 6
+    p.audit_log.should == [
+      'before_adding_method_team_1',
+      'after_adding_method_team_1',
+      'before_adding_method_team_3',
+      'after_adding_method_team_3',
+      'before_removing_method_team_1',
+      'after_removing_method_team_1'
+    ]
+  end
+
+  it 'should set via *_ids method' do
+    p = Person.first
+    p.team_ids = [1,3]
+    p.save
+    p = Person.first
+    p.teams.length.should == 2
+    p.team_ids.should == [1,3]
+  end
+
+  it 'should mass assign' do
+    p = Person.first
+    p.teams << Team.first << Team.last << Team.find(2)
+    p.save
+
+    # Destroy team 2 and 3. Keep team 1.
+    p = Person.first
+    p.attributes = {
+      teams_attributes: [
+        { id: 1 },
+        { id: 3, _destroy: true },
+        { id: 2, _destroy: true }
+      ]
+    }
+    p.teams.length.should == 1
+    p.team_ids.sort.should == [1]
+
+    Person.first
+    Person.first.teams.length.should == 3
+    Person.first.team_ids.sort.should == [1,2,3]
+
+    p.save!
+
+    p = Person.first
+    p.teams.length.should == 1
+    p.team_ids.sort.should == [1]
+  end
+
+  it 'should mass assign' do
+    p = Person.first
+    p.teams << Team.first << Team.last << Team.find(2)
+    p.save
+
+    # Destroy team 2 and 3. Keep team 1.
+    p = Person.first
+    p.teams_attributes = [
+      { id: 1 },
+      { id: 3, _destroy: true },
+      { id: 2, _destroy: true }
+    ]
+    p.teams.length.should == 1
+    p.team_ids.sort.should == [1]
+
+    Person.first
+    Person.first.teams.length.should == 3
+    Person.first.team_ids.sort.should == [1,2,3]
+
+    p.save!
+
+    p = Person.first
+    p.teams.length.should == 1
+    p.team_ids.sort.should == [1]
   end
 
 end
