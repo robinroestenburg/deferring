@@ -29,7 +29,7 @@ module DelayMany
     # teams=
     define_method :"#{association_name}=" do |values|
       find_or_create_rainchecked_association(association_name)
-      send(:"rainchecked_#{association_name}").set(values)
+      send(:"rainchecked_#{association_name}").values = values
     end
 
     # team_ids=

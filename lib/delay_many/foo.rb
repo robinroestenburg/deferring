@@ -1,40 +1,57 @@
 # encoding: UTF-8
 
-module DelayMany
-  class Foo
+require 'delegate'
 
-    attr_reader :name, :values, :original_association
+module DelayMany
+  class Foo < SimpleDelegator
+
+    attr_reader :name, :values, :klass
 
     def initialize(name, original_association)
-      @name = name
-      @original_association = original_association
-      @values = original_association.target.clone
+      super(original_association).tap do |a|
+        @name = name
+        @klass = if original_association.respond_to?(:klass)
+                   original_association.klass
+                 else
+                   name.singularize.classify.constantize
+                 end
+        @values = original_association.target.clone
+      end
     end
 
-    def set(values)
-      @values = values
-    end
+    alias_method :association, :__getobj__
 
     def ids=(ids)
-      @values = ids.map do |id|
-        item = name.singularize.classify.constantize.find(id)
-      end
+      @values = ids.map { |id| klass.find(id) }
     end
 
     def ids
       @values.map(&:id)
     end
 
-    def add_by_id(id)
-      record = name.singularize.classify.constantize.find(id)
-      unless @values.detect { |value| value.id == id }
-        @values.push(record)
-      end
+    def values=(records)
+      @values = records.select { |record| add_record?(record) }
     end
 
+    def add_record?(record)
+      return false unless record
+      !(values.detect { |value| value.id == record.id })
+    end
+
+    def add_record(record)
+      values.push(record)
+    end
+
+
+    def add_by_id(id)
+      add_record(klass.find(id)) if add_record?(klass.find(id))
+    end
+
+
     def remove_by_id(id)
-      record = name.singularize.classify.constantize.find(id)
-      @values.reject! { |value| value.id == id }
+      if record = @values.detect { |value| value.id == id }
+        values.delete(record)
+      end
     end
 
     delegate :[],
@@ -47,20 +64,16 @@ module DelayMany
              to: :values
 
     def build(*args)
-      result = @original_association.build(args)
+      result = association.build(args)
       values.concat(result)
       values
     end
 
     def create!(*args)
-      result = @original_association.create!(args)
+      result = association.create!(args)
       values.concat(result)
       values
     end
 
-    # All other methods are delegated to the original association.
-    def method_missing(*args, &block)
-      original_association.send(*args, &block)
-    end
   end
 end
