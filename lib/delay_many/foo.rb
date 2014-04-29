@@ -5,18 +5,13 @@ require 'delegate'
 module DelayMany
   class Foo < SimpleDelegator
 
-    attr_reader :name, :values, :klass
+    attr_reader :name, :values
 
     def initialize(name, original_association)
-      super(original_association).tap do |a|
-        @name = name
-        @klass = if original_association.respond_to?(:klass)
-                   original_association.klass
-                 else
-                   name.singularize.classify.constantize
-                 end
-        @values = original_association.target.clone
-      end
+      super(original_association)
+
+      @name = name
+      @values = VirtualProxy.new { @values = original_association.to_a.clone }
     end
 
     alias_method :association, :__getobj__
@@ -42,14 +37,12 @@ module DelayMany
       values.push(record)
     end
 
-
     def add_by_id(id)
       add_record(klass.find(id)) if add_record?(klass.find(id))
     end
 
-
     def remove_by_id(id)
-      if record = @values.detect { |value| value.id == id }
+      if record = values.detect { |value| value.id == id }
         values.delete(record)
       end
     end
@@ -59,8 +52,6 @@ module DelayMany
              :delete,
              :size,
              :length,
-             :first,
-             :last,
              to: :values
 
     def build(*args)
@@ -73,6 +64,14 @@ module DelayMany
       result = association.create!(args)
       values.concat(result)
       values
+    end
+
+    def klass
+      if association.respond_to?(:klass)
+        association.klass
+      else
+        name.singularize.classify.constantize
+      end
     end
 
   end

@@ -1,6 +1,7 @@
 # encoding: UTF-8
 
 require 'delay_many/version'
+require 'delay_many/proxy'
 require 'delay_many/foo'
 
 module DelayMany
@@ -65,9 +66,6 @@ module DelayMany
 
     define_method :find_or_create_rainchecked_association do |name|
       if send(:"rainchecked_#{name}").nil?
-        # TODO: Fix, so that it is loaded correctly for new objects.
-        send(:"original_#{name}").to_a
-
         send(
           :"rainchecked_#{name}=",
           Foo.new(name, send(:"original_#{name}")))
@@ -93,7 +91,7 @@ module DelayMany
     define_method :find_or_create_rainchecked_association do |name|
       if send(:"rainchecked_#{name}").nil?
         # TODO: Fix, so that it is loaded correctly for new objects.
-        send(:"original_#{name}").to_a
+        # send(:"original_#{name}").to_a
 
         send(
           :"rainchecked_#{name}=",

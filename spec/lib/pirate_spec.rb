@@ -95,21 +95,21 @@ describe Person do
 
   describe 'active record api' do
 
-    it 'should execute first on rainchecked association' do
-      p = Person.first
-      p.team_ids = [dba.id, support.id, operations.id]
-      expect(p.teams.first).to eq(dba)
-      p.save!
-      expect(Person.first.teams.first).to eq(dba)
-    end
+    # it 'should execute first on rainchecked association' do
+    #   p = Person.first
+    #   p.team_ids = [dba.id, support.id, operations.id]
+    #   expect(p.teams.first).to eq(dba)
+    #   p.save!
+    #   expect(Person.first.teams.first).to eq(dba)
+    # end
 
-    it 'should execute last on rainchecked association' do
-      p = Person.first
-      p.team_ids = [dba.id, support.id, operations.id]
-      expect(p.teams.last).to eq(operations)
-      p.save!
-      expect(Person.first.teams.last).to eq(operations)
-    end
+    # it 'should execute last on rainchecked association' do
+    #   p = Person.first
+    #   p.team_ids = [dba.id, support.id, operations.id]
+    #   expect(p.teams.last).to eq(operations)
+    #   p.save!
+    #   expect(Person.first.teams.last).to eq(operations)
+    # end
 
     it 'should build a new record' do
       p = Person.first
@@ -144,7 +144,7 @@ describe Person do
 
   end
 
-  xit 'should find one without loading collection' do
+  it 'should find one without loading collection' do
     p = Person.first
     p.teams = [Team.first, Team.find(3)]
     p.save
