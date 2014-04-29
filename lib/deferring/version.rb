@@ -1,5 +1,5 @@
 # encoding: UTF-8
 
-module DelayMany
+module Deferring
   VERSION = '0.0.1'
 end

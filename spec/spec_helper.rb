@@ -1,5 +1,5 @@
 require 'support/active_record'
-require 'raincheck'
+require 'deferring'
 require 'support/models'
 
 RSpec.configure do |config|

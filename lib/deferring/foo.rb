@@ -2,7 +2,7 @@
 
 require 'delegate'
 
-module DelayMany
+module Deferring
   class Foo < SimpleDelegator
 
     attr_reader :name, :values
