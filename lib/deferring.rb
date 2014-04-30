@@ -50,9 +50,6 @@ module Deferring
     define_method :"perform_deferred_#{association_name}_save!" do
       find_or_create_deferred_association(association_name)
 
-      # p send(:"original_#{association_name}")
-      # p send(:"rainchecked_#{association_name}")
-
       # Send the values of our delegated association to the original
       # association and store the result.
       send(:"original_#{association_name}=",
@@ -86,6 +83,7 @@ module Deferring
       end
     end
 
+    # TODO: Already defined?
     define_method :find_or_create_deferred_association do |name|
       if send(:"deferred_#{name}").nil?
         send(:"deferred_#{name}=", Foo.new(name, send(:"original_#{name}")))
