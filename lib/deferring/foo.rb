@@ -9,7 +9,6 @@ module Deferring
 
     def initialize(name, original_association)
       super(original_association)
-
       @name = name
       @values = VirtualProxy.new { @values = original_association.to_a.clone }
     end
@@ -17,7 +16,8 @@ module Deferring
     alias_method :association, :__getobj__
 
     def ids=(ids)
-      @values = ids.map { |id| klass.find(id) }
+      ids = Array(ids).reject { |id| id.blank? }
+      @values = klass.find(ids)
     end
 
     def ids
