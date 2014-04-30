@@ -55,15 +55,15 @@ module Deferring
              to: :values
 
     def build(*args)
-      result = association.build(args)
-      values.concat(result)
-      values
+      association.build(args).tap do |result|
+        values.concat(result)
+      end
     end
 
     def create!(*args)
-      result = association.create!(args)
-      values.concat(result)
-      values
+      association.create!(args).tap do |result|
+        values.concat(result)
+      end
     end
 
     def klass
