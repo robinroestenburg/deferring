@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe Person do
 
-  before do
+  before(:all) do
     Person.create!(name: 'Alice')
     Person.create!(name: 'Bob')
 
@@ -15,17 +15,24 @@ describe Person do
   let(:support) { Team.where(name: 'End-User Support').first }
   let(:operations) { Team.where(name: 'Operations').first }
 
-
-  it 'creates are delayed until parent is saved' do
+  it 'does not create a link between person and teams until person is saved' do
     p = Person.new(name: 'Chuck')
     p.teams << dba << support
-    Person.count.should == 2
 
-    p.save
-    Person.count.should == 3
+    expect(Person.count_by_sql("SELECT COUNT(*) FROM people_teams")).to eq(0)
+    # TODO: Change name of original_teams, maybe:
+    # -- teams.target
+    # -- teams_without_deferred_save
+    # What use case?
+    expect(p.original_teams.size).to eq(0)
+    expect(p.teams.size).to eq(2)
+
+    p.save!
 
     p.reload
-    p.teams.size.should == 2
+    expect(Person.count_by_sql("SELECT COUNT(*) FROM people_teams")).to eq(2)
+    expect(p.original_teams.size).to eq(2)
+    expect(p.teams.size).to eq(2)
   end
 
   it 'delays updates to existing parent' do
