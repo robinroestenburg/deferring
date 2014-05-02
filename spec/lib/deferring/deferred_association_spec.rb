@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 module Deferring
-  describe Foo do
+  describe DeferredAssociation do
 
     before do
       Person.create!(name: 'Bob')

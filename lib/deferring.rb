@@ -1,17 +1,16 @@
 # encoding: UTF-8
 
 require 'deferring/version'
-require 'deferring/proxy'
-require 'deferring/foo'
+require 'deferring/deferred_association'
 
 module Deferring
   # Creates a wrapper around `has_and_belongs_to_many`. A normal habtm
-  # association is created, but the association is decoracted by a
-  # DeferredAssociation. This will replace the accessor methods to the
-  # association with our own which will not automatically save the association.
+  # association is created, but this association is wrapped in a
+  # DeferredAssociation. The accessor methods of the original association are
+  # replaced with ones that will defer saving the association until the parent
+  # object has been saved.
   def deferred_has_and_belongs_to_many(*args)
     has_and_belongs_to_many(*args)
-
     association_name = args.first.to_s
 
     # Store the original accessor methods of the association.
@@ -58,35 +57,39 @@ module Deferring
       # Store the new value of the association into our delegated association.
       send(
         :"deferred_#{association_name}=",
-        Foo.new(association_name, send(:"original_#{association_name}")))
+        DeferredAssociation.new(
+          association_name,
+          send(:"original_#{association_name}")))
     end
 
     define_method :find_or_create_deferred_association do |name|
       if send(:"deferred_#{name}").nil?
-        send(:"deferred_#{name}=", Foo.new(name, send(:"original_#{name}")))
+        send(
+          :"deferred_#{name}=",
+          DeferredAssociation.new(name, send(:"original_#{name}")))
       end
     end
   end
 
   def deferred_accepts_nested_attributes_for(*args)
     accepts_nested_attributes_for(*args)
-
     association_name = args.first.to_s
 
     # teams_attributes=
     define_method :"#{association_name}_attributes=" do |records|
       find_or_create_deferred_association(association_name)
-      records.each do |record|
 
-        send(:"deferred_#{association_name}").add_by_id(record[:id]) unless record[:_destroy]
-        send(:"deferred_#{association_name}").remove_by_id(record[:id]) if record[:_destroy]
-      end
+      # Remove the records that are to be destroyed from the ids that are to be
+      # assigned to the DeferredAssociation instance.
+      records.reject! { |record| record[:_destroy] }
+
+      send(:"deferred_#{association_name}").ids = records.map { |record| record[:id] }
     end
 
     # TODO: Already defined?
     define_method :find_or_create_deferred_association do |name|
       if send(:"deferred_#{name}").nil?
-        send(:"deferred_#{name}=", Foo.new(name, send(:"original_#{name}")))
+        send(:"deferred_#{name}=", DeferredAssociation.new(name, send(:"original_#{name}")))
       end
     end
 

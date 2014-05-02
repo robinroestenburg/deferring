@@ -3,7 +3,7 @@
 require 'delegate'
 
 module Deferring
-  class Foo < SimpleDelegator
+  class DeferredAssociation < SimpleDelegator
 
     attr_reader :name, :values, :load_state
 
@@ -94,18 +94,6 @@ module Deferring
       original_values - values
     end
 
-    # TODO: Move to private.
-    def add_by_id(id)
-      record = klass.find(id)
-      add_record(record)
-    end
-
-    # TODO: Move to private.
-    def remove_by_id(id)
-      record = klass.find(id)
-      delete_record(record)
-    end
-
     private
 
     def loaded!
@@ -125,19 +113,11 @@ module Deferring
     end
 
     def add_record(record)
-      unless existing_record?(record)
-        values << record
-      end
+      values << record unless values.include? record
     end
 
     def delete_record(record)
-      if existing_record?(record)
-        values.delete(record)
-      end
-    end
-
-    def existing_record?(record)
-      values.index_by(&:id).has_key? record.id
+      values.delete(record)
     end
 
   end
