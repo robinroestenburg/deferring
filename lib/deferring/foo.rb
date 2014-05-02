@@ -5,15 +5,15 @@ require 'delegate'
 module Deferring
   class Foo < SimpleDelegator
 
-    attr_reader :name, :values
+    attr_reader :name, :values, :load_state
 
     def initialize(name, original_association)
       super(original_association)
       @name = name
-      @values = VirtualProxy.new { @values = original_association.to_a.clone }
+      @load_state = :ghost
     end
 
-    alias_method :association, :__getobj__
+    alias_method :original_association, :__getobj__
 
     def klass
       if association.respond_to?(:klass)
@@ -30,23 +30,38 @@ module Deferring
 
     def ids=(ids)
       ids = Array(ids).reject { |id| id.blank? }
-      # TODO: Change to replace implementation.
       @values = klass.find(ids)
+      @original_values = original_association.to_a.clone
+      loaded!
+
+      @values
+    end
+
+    def association
+      load
+      original_association
+    end
+
+    def values
+      load
+      @values
+    end
+
+    def original_values
+      load
+      @original_values
     end
 
     def values=(records)
-      # TODO: Change to replace implementation.
-      old_ids = values.map(&:id).compact
-      new_ids = records.map(&:id).compact
-
-      @pending_creates = klass.find(new_ids - old_ids)
-      @pending_deletes = klass.find(old_ids - new_ids)
-
       @values = records
+      @original_values = original_association.to_a.clone
+      loaded!
+
+      @values
     end
 
     def ids
-      @values.map(&:id)
+      values.map(&:id)
     end
 
     def <<(record)
@@ -72,11 +87,11 @@ module Deferring
     end
 
     def pending_creates
-      @pending_creates ||= []
+      values - original_values
     end
 
     def pending_deletes
-      @pending_deletes ||= []
+      original_values - values
     end
 
     # TODO: Move to private.
@@ -93,16 +108,30 @@ module Deferring
 
     private
 
+    def loaded!
+      @load_state = :loaded
+    end
+
+    def loaded?
+      @load_state == :loaded
+    end
+
+    def load
+      return if loaded?
+
+      @values = original_association.to_a.clone
+      @original_values = @values.clone.freeze
+      loaded!
+    end
+
     def add_record(record)
       unless existing_record?(record)
-        pending_creates << record
         values << record
       end
     end
 
     def delete_record(record)
       if existing_record?(record)
-        pending_deletes << record
         values.delete(record)
       end
     end

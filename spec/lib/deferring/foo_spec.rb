@@ -13,6 +13,12 @@ module Deferring
 
     describe '#pending_creates' do
 
+      it 'returns newly build records' do
+        bob = Person.first
+        bob.teams.build(name: 'Service Desk')
+        expect(bob.teams.pending_creates.size).to eq(1)
+      end
+
       it 'returns associated records that need to be linked to parent' do
         bob = Person.first
         bob.teams = [Team.first]
