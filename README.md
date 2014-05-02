@@ -1,12 +1,46 @@
-# Raincheck
+# Delay Many
 
-TODO: Write a gem description
+DelayMany makes it possible to delay saving ActiveRecord associations until the
+parent object has been validated.
 
-## Installation
+Currently supporting Rails 3.0, 3.2, 4.0 and 4.1.
+
+
+## Why use it?
+
+Let's take a look at the following example:
+
+``` ruby
+
+```
+
+The links to the Teams associated to the Person are stored directly, before the
+(in this case invalid) parent is actually saved. This is how Rails' `has_many`
+and `has_and_belongs_to_many` associations work, but not how (imho) they should
+work in this situation.
+
+The `delay_many` gem will delay creating the links between Person and Team until
+the Person has been saved succesfully. Let's look at the aforementioned example
+again, now using the `delay_many` gem:
+
+``` ruby
+
+```
+
+
+## Use cases
+
+* Auditing
+* ...
+
+
+## Getting started
+
+### Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'raincheck'
+    gem 'delay_many'
 
 And then execute:
 
@@ -14,11 +48,15 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install raincheck
+    $ gem install delay_many
 
-## Usage
+
+### How do I use it?
 
 TODO: Write usage instructions here
+
+For more examples of using `delay_many`, please take a look at the specs.
+
 
 ## Contributing
 
