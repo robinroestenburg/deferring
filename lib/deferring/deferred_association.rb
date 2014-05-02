@@ -5,7 +5,9 @@ require 'delegate'
 module Deferring
   class DeferredAssociation < SimpleDelegator
 
-    attr_reader :name, :values, :load_state
+    attr_reader :name,
+                :values,
+                :load_state
 
     def initialize(name, original_association)
       super(original_association)
@@ -65,13 +67,13 @@ module Deferring
     end
 
     def <<(record)
-      add_record(record)
+      values << record unless values.include? record
     end
     alias_method :push, :<<
     alias_method :concat, :<<
 
     def delete(record)
-      delete_record(record)
+      values.delete(record)
     end
 
     def build(*args)
@@ -86,10 +88,14 @@ module Deferring
       end
     end
 
+    # Returns the associated records to which links will be created after saving
+    # the parent of the association.
     def pending_creates
       values - original_values
     end
 
+    # Returns the associated records to which the links will be deleted after
+    # saving the parent of the assocation.
     def pending_deletes
       original_values - values
     end
@@ -110,14 +116,6 @@ module Deferring
       @values = original_association.to_a.clone
       @original_values = @values.clone.freeze
       loaded!
-    end
-
-    def add_record(record)
-      values << record unless values.include? record
-    end
-
-    def delete_record(record)
-      values.delete(record)
     end
 
   end
