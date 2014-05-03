@@ -34,9 +34,9 @@ module Deferring
     #
     # Replaces the collection's content by deleting and adding objects as
     # appropriate.
-    define_method :"#{association_name}=" do |values|
+    define_method :"#{association_name}=" do |objects|
       find_or_create_deferred_association(association_name)
-      send(:"deferred_#{association_name}").values = values
+      send(:"deferred_#{association_name}").objects = objects
     end
 
     # collection_singular_ids=
@@ -48,7 +48,7 @@ module Deferring
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       objects = klass.find(ids)
-      send(:"deferred_#{association_name}").values = objects
+      send(:"deferred_#{association_name}").objects = objects
     end
 
     # collection_singular_ids
@@ -64,10 +64,10 @@ module Deferring
     define_method :"perform_deferred_#{association_name}_save!" do
       find_or_create_deferred_association(association_name)
 
-      # Send the values of our delegated association to the original
+      # Send the objects of our delegated association to the original
       # association and store the result.
       send(:"original_#{association_name}=",
-           send(:"deferred_#{association_name}").values)
+           send(:"deferred_#{association_name}").objects)
 
       # Store the new value of the association into our delegated association.
       send(
@@ -92,7 +92,7 @@ module Deferring
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       objects = klass.find(records.map { |record| record[:id] })
-      send(:"deferred_#{association_name}").values = objects
+      send(:"deferred_#{association_name}").objects = objects
     end
 
     generate_find_or_create_deferred_association_method
