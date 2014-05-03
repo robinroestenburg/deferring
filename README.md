@@ -140,10 +140,8 @@ person.audit_log # => ['Before adding Pet 1']
 ## TODO
 
 * check out what is going on with uniq: true
-* collection.reload
-* collection.reset
+* collection(true) (same as reload)
 * collection.replace
-* collection.append (<<)
 
 ## Contributing
 

@@ -35,6 +35,54 @@ describe Person do
     expect(p.teams.size).to eq(2)
   end
 
+  it 'reloads the association' do
+    p = Person.first
+    p.teams << operations
+    p.save!
+
+    p.teams << dba << support
+    p.teams.reload
+
+    p.teams.should eq [operations]
+    p.teams.pending_creates.should be_empty
+  end
+
+  it 'reloads the association (2)' do
+    p = Person.first
+    p.teams << operations
+    p.save!
+
+    t = Team.where(name: 'Database Administration').first
+    t.people << p
+
+    p.teams.reload
+    p.teams.should eq [operations, dba]
+  end
+
+  it 'resets the association' do
+    p = Person.first
+    p.teams << operations
+    p.save!
+
+    p.teams << dba << support
+    p.teams.reset
+
+    p.teams.should eq [operations]
+    p.teams.pending_creates.should be_empty
+  end
+
+  it 'resets the association (2)' do
+    p = Person.first
+    p.teams << operations
+    p.save!
+
+    t = Team.where(name: 'Database Administration').first
+    t.people << p
+
+    p.teams.reset
+    p.teams.should eq [operations, dba]
+  end
+
   xit 'should not add duplicate values' do
     dba = Team.first
     dba.people = [Person.first, Person.find(2), Person.last]

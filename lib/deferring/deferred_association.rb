@@ -75,6 +75,13 @@ module Deferring
       end
     end
 
+    def reload
+      original_association.reload
+      @load_state = :ghost
+      self
+    end
+    alias_method :reset, :reload
+
     # Returns the associated records to which links will be created after saving
     # the parent of the association.
     def pending_creates
