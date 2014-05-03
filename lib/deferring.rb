@@ -20,25 +20,40 @@ module Deferring
     # Accessor for our own association.
     attr_accessor :"deferred_#{association_name}"
 
-    # teams
+    # collection
+    #
+    # Returns an array of all the associated objects. An empty array is returned
+    # if none are found.
+    # TODO: add force_reload argument?
     define_method :"#{association_name}" do
       find_or_create_deferred_association(association_name)
       send(:"deferred_#{association_name}")
     end
 
-    # teams=
+    # collection=objects
+    #
+    # Replaces the collection's content by deleting and adding objects as
+    # appropriate.
     define_method :"#{association_name}=" do |values|
       find_or_create_deferred_association(association_name)
       send(:"deferred_#{association_name}").values = values
     end
 
-    # team_ids=
+    # collection_singular_ids=
+    #
+    # Replace the collection by the objects identified by the primary keys in
+    # ids.
     define_method :"#{association_name.singularize}_ids=" do |ids|
       find_or_create_deferred_association(association_name)
-      send(:"deferred_#{association_name}").ids = ids
+
+      klass = self.class.reflect_on_association(:"#{association_name}").klass
+      objects = klass.find(ids)
+      send(:"deferred_#{association_name}").values = objects
     end
 
-    # team_ids
+    # collection_singular_ids
+    #
+    # Returns an array of the associated objects' ids.
     define_method :"#{association_name.singularize}_ids" do
       find_or_create_deferred_association(association_name)
       send(:"deferred_#{association_name}").ids
@@ -57,18 +72,10 @@ module Deferring
       # Store the new value of the association into our delegated association.
       send(
         :"deferred_#{association_name}=",
-        DeferredAssociation.new(
-          association_name,
-          send(:"original_#{association_name}")))
+        DeferredAssociation.new(send(:"original_#{association_name}")))
     end
 
-    define_method :find_or_create_deferred_association do |name|
-      if send(:"deferred_#{name}").nil?
-        send(
-          :"deferred_#{name}=",
-          DeferredAssociation.new(name, send(:"original_#{name}")))
-      end
-    end
+    generate_find_or_create_deferred_association_method
   end
 
   def deferred_accepts_nested_attributes_for(*args)
@@ -83,16 +90,22 @@ module Deferring
       # assigned to the DeferredAssociation instance.
       records.reject! { |record| record[:_destroy] }
 
-      send(:"deferred_#{association_name}").ids = records.map { |record| record[:id] }
+      klass = self.class.reflect_on_association(:"#{association_name}").klass
+      objects = klass.find(records.map { |record| record[:id] })
+      send(:"deferred_#{association_name}").values = objects
     end
 
-    # TODO: Already defined?
+    generate_find_or_create_deferred_association_method
+  end
+
+  def generate_find_or_create_deferred_association_method
     define_method :find_or_create_deferred_association do |name|
       if send(:"deferred_#{name}").nil?
-        send(:"deferred_#{name}=", DeferredAssociation.new(name, send(:"original_#{name}")))
+        send(
+          :"deferred_#{name}=",
+          DeferredAssociation.new(send(:"original_#{name}")))
       end
     end
-
   end
 end
 

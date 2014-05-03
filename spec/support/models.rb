@@ -10,7 +10,7 @@ class Person < ActiveRecord::Base
 
   validates_presence_of :name
 
-  has_many :shoes
+  has_many :issues
 
   def audit_log
     @audit_log ||= []
@@ -39,9 +39,9 @@ class Person < ActiveRecord::Base
 end
 
 class Team < ActiveRecord::Base
-  deferred_has_and_belongs_to_many :people
+  has_and_belongs_to_many :people
 end
 
-class Shoe < ActiveRecord::Base
+class Issue < ActiveRecord::Base
   belongs_to :person
 end

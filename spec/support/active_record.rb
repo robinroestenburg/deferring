@@ -19,8 +19,8 @@ ActiveRecord::Schema.define version: 0 do
     t.timestamps
   end
 
-  create_table :shoes do |t|
-    t.string :name
+  create_table :issues do |t|
+    t.string :subject
     t.integer :person_id
     t.timestamps
   end

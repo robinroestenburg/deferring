@@ -5,59 +5,40 @@ require 'delegate'
 module Deferring
   class DeferredAssociation < SimpleDelegator
 
-    attr_reader :name,
-                :values,
+    attr_reader :values,
                 :load_state
 
-    def initialize(name, original_association)
+    def initialize(original_association)
       super(original_association)
-      @name = name
       @load_state = :ghost
     end
 
     alias_method :original_association, :__getobj__
-
-    def klass
-      if association.respond_to?(:klass)
-        association.klass
-      else
-        name.singularize.classify.constantize
-      end
-    end
 
     delegate :[],
              :size,
              :length,
              to: :values
 
-    def ids=(ids)
-      ids = Array(ids).reject { |id| id.blank? }
-      @values = klass.find(ids)
-      @original_values = original_association.to_a.clone
-      loaded!
-
-      @values
-    end
-
     def association
-      load
+      load_objects
       original_association
     end
 
     def values
-      load
+      load_objects
       @values
     end
 
     def original_values
-      load
+      load_objects
       @original_values
     end
 
     def values=(records)
       @values = records
       @original_values = original_association.to_a.clone
-      loaded!
+      objects_loaded!
 
       @values
     end
@@ -66,14 +47,20 @@ module Deferring
       values.map(&:id)
     end
 
-    def <<(record)
-      values << record unless values.include? record
+    def <<(records)
+      # TODO: Do we want to prevent including the same object twice? Not sure,
+      # but it will probably be filtered after saving and retrieving as well.
+      values.concat(Array(records).flatten)
     end
     alias_method :push, :<<
     alias_method :concat, :<<
+    alias_method :append, :<<
 
-    def delete(record)
-      values.delete(record)
+    def delete(records)
+      Array(records).flatten.uniq.each do |record|
+        values.delete(record)
+      end
+      self
     end
 
     def build(*args)
@@ -102,20 +89,20 @@ module Deferring
 
     private
 
-    def loaded!
+    def objects_loaded!
       @load_state = :loaded
     end
 
-    def loaded?
+    def objects_loaded?
       @load_state == :loaded
     end
 
-    def load
-      return if loaded?
+    def load_objects
+      return if objects_loaded?
 
       @values = original_association.to_a.clone
       @original_values = @values.clone.freeze
-      loaded!
+      objects_loaded!
     end
 
   end

@@ -35,9 +35,17 @@ describe Person do
     expect(p.teams.size).to eq(2)
   end
 
+  xit 'should not add duplicate values' do
+    dba = Team.first
+    dba.people = [Person.first, Person.find(2), Person.last]
+
+    dba.people.size.should eq 2
+    dba.person_ids.should eq [1,2]
+  end
+
   it 'delays updates to existing parent' do
     p = Person.first
-    p.teams << dba << support
+    p.teams << [dba, support]
 
     expect{ p.save }.to change{ Person.first.teams.size }.from(0).to(2)
   end
@@ -46,10 +54,10 @@ describe Person do
     p = Person.first
     p.team_ids = [dba.id, support.id, operations.id]
     p.save
-
-    # TODO: I had to remove the array here.
-    p.teams.delete(Team.find(dba.id))
-    p.teams.delete(Team.find(operations.id))
+    p.teams.delete([
+      Team.find(dba.id),
+      Team.find(operations.id)
+    ])
 
     expect{ p.save }.to change{ Person.first.teams.size }.from(3).to(1)
   end
@@ -163,18 +171,22 @@ describe Person do
     teams.loaded?.should == false
   end
 
-  xit 'should call before_add, after_add, before_remove, after_remove callbacks' do
-    p = Person.first
-    p.teams = [Team.first, Team.find(3)]
-    p.teams.delete(p.teams[0])
-    p.audit_log.length.should == 6
-    p.audit_log.should == [
-      'before_adding_method_team_1',
-      'after_adding_method_team_1',
-      'before_adding_method_team_3',
-      'after_adding_method_team_3',
-      'before_removing_method_team_1',
-      'after_removing_method_team_1'
+  it 'should call before_add, after_add, before_remove, after_remove callbacks' do
+    bob = Person.first
+    bob.teams = [Team.first, Team.find(3)]
+    bob.save!
+
+    bob = Person.first
+    bob.teams.delete(bob.teams[0])
+    bob.teams << Team.find(2)
+    bob.save!
+
+    bob.audit_log.length.should == 4
+    bob.audit_log.should == [
+      'Before removing team 1',
+      'After removing team 1',
+      'Before adding team 2',
+      'After adding team 2'
     ]
   end
 
