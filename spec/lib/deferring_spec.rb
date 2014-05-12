@@ -89,7 +89,7 @@ describe Person do
       bob.save!
 
       dba.reload
-      expect(dba.people_ids).to eq [bob.id]
+      expect(dba.person_ids).to eq [bob.id]
 
       # Change the association on the Team side.
       dba.people = []
