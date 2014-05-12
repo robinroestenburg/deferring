@@ -75,6 +75,17 @@ module Deferring
         DeferredAssociation.new(send(:"original_#{association_name}")))
     end
 
+    define_method :"reload_with_deferred_#{association_name}" do |*args|
+      find_or_create_deferred_association(association_name)
+
+      send(:"reload_without_deferred_#{association_name}", *args).tap do
+        send(
+          :"deferred_#{association_name}=",
+          DeferredAssociation.new(send(:"original_#{association_name}")))
+      end
+    end
+    alias_method_chain :reload, :"deferred_#{association_name}"
+
     generate_find_or_create_deferred_association_method
   end
 
