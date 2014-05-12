@@ -59,50 +59,63 @@ describe Person do
 
   context 'reloading & resetting associations' do
 
-    it 'reloads the association' do
-      p = Person.first
-      p.teams << operations
-      p.save!
+    it 'should throw away unsaved changes when reloading the parent' do
+      bob = Person.where(name: 'Bob').first
+      bob.teams << operations
+      bob.save!
 
-      p.teams << dba << support
-      p.reload
+      bob.teams << dba << support
+      bob.reload # RELOAD THE PARENT
 
-      p.teams.should eq [operations]
-      p.teams.pending_creates.should be_empty
+      bob.teams.should eq [operations]
+      bob.teams.pending_creates.should be_empty
     end
 
-    it 'reloads the association (2)' do
-      p = Person.first
-      p.team_ids = [operations.id, dba.id]
-      p.save!
+    it 'should throw away unsaved changes when reloading itself' do
+      bob = Person.where(name: 'Bob').first
+      bob.teams << operations
+      bob.save!
 
-      operations.reload
-      expect(operations.people.map(&:id)).to eq [p.id]
+      bob.teams << dba << support
+      bob.teams.reload # RELOAD THE ASSOCIATION
+
+      bob.teams.should eq [operations]
+      bob.teams.pending_creates.should be_empty
+    end
+
+    it 'should load changes saved on the other other side of the association' do
+      bob = Person.where(name: 'Bob').first
+      bob.team_ids = [operations.id, dba.id]
+      bob.save!
 
       dba.reload
-      expect(dba.people.map(&:id)).to eq [p.id]
+      expect(dba.people_ids).to eq [bob.id]
 
+      # Change the association on the Team side.
       dba.people = []
       dba.save!
 
-      p.reload
+      bob.reload
 
-      expect(p.teams.map(&:id)).to eq [operations.id]
-      expect(p.teams.pending_creates).to be_empty
+      expect(bob.team_ids).to eq [operations.id]
+      expect(bob.teams.pending_creates).to be_empty
     end
 
-    it 'reloads the association (2)' do
-      p = Person.first
-      p.teams << operations
-      p.save!
+    it 'should load changes saved on the association' do
+      bob = Person.where(name: 'Bob').first
+      bob.teams << operations
+      bob.save!
 
-      t = Team.where(name: 'Database Administration').first
-      t.people << p
+      # Note: Team has a regular HABTM association to Person, so there is no
+      # need to explicitly save after shovelling the person into the team.
+      dba = Team.where(name: 'Database Administration').first
+      dba.people << bob
 
-      p.teams.reload
-      p.teams.should eq [operations, dba]
+      bob.reload
+      expect(bob.teams).to eq [operations, dba]
     end
 
+    # TODO
     it 'resets the association' do
       p = Person.first
       p.teams << operations
