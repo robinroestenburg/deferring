@@ -15,6 +15,122 @@ describe Person do
   let(:support) { Team.where(name: 'End-User Support').first }
   let(:operations) { Team.where(name: 'Operations').first }
 
+  describe 'preloading associations' do
+    before do
+      p = Person.find(1)
+      p.teams << dba << support
+      p.save!
+    end
+
+    if rails30 # old-style preload
+      it 'should have loaded the association' do
+        p = Person.find(1)
+        Person.send(:preload_associations, p, [:teams])
+        expect(p.teams.loaded?).to be_true
+        expect(p.team_ids).to eq [dba.id, support.id]
+      end
+    end
+
+    if rails32 || rails4
+      it 'should have loaded the association when pre-loading' do
+        people = Person.preload(:teams)
+        expect(people[0].teams.loaded?).to be_true
+        expect(people[0].team_ids).to eq [dba.id, support.id]
+      end
+
+      it 'should have loaded the association when eager loading' do
+        people = Person.eager_load(:teams)
+        expect(people[0].teams.loaded?).to be_true
+        expect(people[0].team_ids).to eq [dba.id, support.id]
+      end
+
+      it 'should have loaded the association when joining' do
+        people = Person.includes(:teams).all
+        expect(people[0].teams.loaded?).to be_true
+        expect(people[0].team_ids).to eq [dba.id, support.id]
+      end
+    end
+
+    it 'should not have loaded the association when using a regular query' do
+      people = Person.all
+      expect(people[0].teams.loaded?).to be_false
+    end
+  end
+
+  context 'reloading & resetting associations' do
+
+    it 'reloads the association' do
+      p = Person.first
+      p.teams << operations
+      p.save!
+
+      p.teams << dba << support
+      p.reload
+
+      p.teams.should eq [operations]
+      p.teams.pending_creates.should be_empty
+    end
+
+    it 'reloads the association (2)' do
+      p = Person.first
+      p.team_ids = [operations.id, dba.id]
+      p.save!
+
+      operations.reload
+      expect(operations.people.map(&:id)).to eq [p.id]
+
+      dba.reload
+      expect(dba.people.map(&:id)).to eq [p.id]
+
+      dba.people = []
+      dba.save!
+
+      p.reload
+
+      expect(p.teams.map(&:id)).to eq [operations.id]
+      expect(p.teams.pending_creates).to be_empty
+    end
+
+    it 'reloads the association (2)' do
+      p = Person.first
+      p.teams << operations
+      p.save!
+
+      t = Team.where(name: 'Database Administration').first
+      t.people << p
+
+      p.teams.reload
+      p.teams.should eq [operations, dba]
+    end
+
+    it 'resets the association' do
+      p = Person.first
+      p.teams << operations
+      p.save!
+
+      p.teams << dba << support
+      p.teams.reset
+
+      p.teams.should eq [operations]
+      p.teams.pending_creates.should be_empty
+    end
+
+    it 'resets the association (2)' do
+      p = Person.first
+      p.teams << operations
+      p.save!
+
+      t = Team.where(name: 'Database Administration').first
+      t.people << p
+
+      p.teams.reset
+      p.teams.should eq [operations, dba]
+    end
+
+  end
+
+
+
   it 'does not create a link between person and teams until person is saved' do
     p = Person.new(name: 'Chuck')
     p.teams << dba << support
@@ -33,74 +149,6 @@ describe Person do
     expect(Person.count_by_sql("SELECT COUNT(*) FROM people_teams")).to eq(2)
     expect(p.original_teams.size).to eq(2)
     expect(p.teams.size).to eq(2)
-  end
-
-  it 'reloads the association' do
-    p = Person.first
-    p.teams << operations
-    p.save!
-
-    p.teams << dba << support
-    p.reload
-
-    p.teams.should eq [operations]
-    p.teams.pending_creates.should be_empty
-  end
-
-  it 'reloads the association (2)' do
-    p = Person.first
-    p.team_ids = [operations.id, dba.id]
-    p.save!
-
-    operations.reload
-    expect(operations.people.map(&:id)).to eq [p.id]
-
-    dba.reload
-    expect(dba.people.map(&:id)).to eq [p.id]
-
-    dba.people = []
-    dba.save!
-
-    p.reload
-
-    expect(p.teams.map(&:id)).to eq [operations.id]
-    expect(p.teams.pending_creates).to be_empty
-  end
-
-  it 'reloads the association (2)' do
-    p = Person.first
-    p.teams << operations
-    p.save!
-
-    t = Team.where(name: 'Database Administration').first
-    t.people << p
-
-    p.teams.reload
-    p.teams.should eq [operations, dba]
-  end
-
-  it 'resets the association' do
-    p = Person.first
-    p.teams << operations
-    p.save!
-
-    p.teams << dba << support
-    p.teams.reset
-
-    p.teams.should eq [operations]
-    p.teams.pending_creates.should be_empty
-  end
-
-  it 'resets the association (2)' do
-    p = Person.first
-    p.teams << operations
-    p.save!
-
-    t = Team.where(name: 'Database Administration').first
-    t.people << p
-
-    p.teams.reset
-    p.teams.should eq [operations, dba]
   end
 
   xit 'should not add duplicate values' do

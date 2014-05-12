@@ -19,6 +19,11 @@ module Deferring
              :length,
              to: :objects
 
+    # Rails 3.0 specific, not needed anymore for Rails 3.0+
+    def set_inverse_instance(associated_record, parent_record)
+      original_association.__send__(:set_inverse_instance, associated_record, parent_record)
+    end
+
     def association
       load_objects
       original_association
