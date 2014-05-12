@@ -301,4 +301,32 @@ describe Person do
     p.team_ids.sort.should == [1]
   end
 
+  describe 'validations' do
+
+    it 'deferred habtm <=> regular habtm' do
+      alice = Person.where(name: 'Alice').first
+      bob = Person.where(name: 'Bob').first
+
+      team = Team.first
+      team.people << alice << bob
+      team.save!
+
+      bob.reload
+      expect(bob.teams.size).to eq(1)
+
+      alice.reload
+      expect(alice.teams.size).to eq(1)
+
+      team.people.create!(name: 'Chuck')
+      expect(team).to_not be_valid
+
+      expect(bob).to_not be_valid
+      expect(alice).to_not be_valid
+
+      expect(bob.save).to be_false
+      expect(alice.save).to be_false
+    end
+
+  end
+
 end

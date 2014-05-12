@@ -6,7 +6,7 @@ parent object has been saved.
 Currently supporting Rails 3.0, 3.2, 4.0 and 4.1.
 
 It is important to note that Deferring does not touch the original `has_many`
-and `has_and_belongs_to_many` associations. You can use them, wihtout worrying
+and `has_and_belongs_to_many` associations. You can use them, without worrying
 about any changed behaviour or side-effects from using Deferring.
 
 ## Credits/Rationale
@@ -15,12 +15,14 @@ The ideas of this gem was originally thought of by TylerRick (see this thread).
 The gem created by TylerRick is still available, but not maintained. This gem
 has been forked by (among others) MartinKoener - who added Rails 3 support.
 
+TODO: Add links.
+
 A project I am working on, uses the `autosave_habtm` gem, which kind of takes
 different approach to doing the same thing. This gem only supported Rails 3.0.
 
 As we are upgrading to Rails 3.2 (and later Rails 4), I needed a gem to provide
 this behaviour. Upgrading either one of the gems would result into rewriting a
-lot of the code (for different reasons, some purely estetic :)), so that is why
+lot of the code (for different reasons, some purely esthetic :)), so that is why
 I wrote a new gem.
 
 
@@ -29,7 +31,7 @@ I wrote a new gem.
 Let's take a look at the following example:
 
 ``` ruby
-
+TODO
 ```
 
 The links to the Teams associated to the Person are stored directly, before the
@@ -37,12 +39,12 @@ The links to the Teams associated to the Person are stored directly, before the
 and `has_and_belongs_to_many` associations work, but not how (imho) they should
 work in this situation.
 
-The `delay_many` gem will delay creating the links between Person and Team until
+The `deferring` gem will delay creating the links between Person and Team until
 the Person has been saved succesfully. Let's look at the aforementioned example
-again, now using the `delay_many` gem:
+again, now using the `deferring` gem:
 
 ``` ruby
-
+TODO
 ```
 
 
@@ -82,11 +84,11 @@ call `has_many` in order to set up the assocation.
 
 ### How does it work?
 
-Deferring actually wraps the original association and replaces the accessor
-methods to the association by a custom object that will keep track of the
-updates to the association. When the parent is saved (using an `after_save`),
-this object is assigned to the original association which will automatically
-save the changes to the database.
+Deferring wraps the original association and replaces the accessor methods to
+the association by a custom object that will keep track of the updates to the
+association. When the parent is saved (using an `after_save`), this object is
+assigned to the original association which will automatically save the changes
+to the database.
 
 ### Gotchas
 
@@ -142,6 +144,10 @@ person.audit_log # => ['Before adding Pet 1']
 * check out what is going on with uniq: true
 * collection(true) (same as reload)
 * collection.replace
+* `set_inverse_instance`?
+* add service on one side of the collection, will not make it through to the
+  other side?
+* validations!
 
 ## Contributing
 

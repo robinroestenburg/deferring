@@ -5,8 +5,7 @@ require 'delegate'
 module Deferring
   class DeferredAssociation < SimpleDelegator
 
-    attr_reader :objects,
-                :load_state
+    attr_reader :load_state
 
     def initialize(original_association)
       super(original_association)
@@ -98,20 +97,20 @@ module Deferring
 
     private
 
-    def objects_loaded!
-      @load_state = :loaded
-    end
-
-    def objects_loaded?
-      @load_state == :loaded
-    end
-
     def load_objects
       return if objects_loaded?
 
       @objects = original_association.to_a.clone
       @original_objects = @objects.clone.freeze
       objects_loaded!
+    end
+
+    def objects_loaded?
+      @load_state == :loaded
+    end
+
+    def objects_loaded!
+      @load_state = :loaded
     end
 
   end
