@@ -14,10 +14,30 @@ module Deferring
 
     alias_method :original_association, :__getobj__
 
-    delegate :[],
-             :size,
-             :length,
+    delegate :[], :size, :length,
+
+             # SimpleDelegator
+             :to_s,
+             :to_a,
+             :inspect,
+             :==,
+
+             # Enumerable + Array stuff
+             # TODO: just take all methods from these modules?
+             :map, :detect, :clear, # ...
+
              to: :objects
+
+    # TODO: Add explanation about :first/:last loaded? problem.
+    [:first, :last].each do |method|
+      define_method method do
+        unless objects_loaded?
+          original_association.send(method)
+        else
+          objects.send(method)
+        end
+      end
+    end
 
     # Rails 3.0 specific, not needed anymore for Rails 3.0+
     def set_inverse_instance(associated_record, parent_record)

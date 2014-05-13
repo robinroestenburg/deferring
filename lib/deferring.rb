@@ -73,6 +73,7 @@ module Deferring
       send(
         :"deferred_#{association_name}=",
         DeferredAssociation.new(send(:"original_#{association_name}")))
+
     end
 
     define_method :"reload_with_deferred_#{association_name}" do |*args|
