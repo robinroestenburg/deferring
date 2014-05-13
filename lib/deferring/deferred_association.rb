@@ -4,6 +4,7 @@ require 'delegate'
 
 module Deferring
   class DeferredAssociation < SimpleDelegator
+    include Enumerable
 
     attr_reader :load_state
 
@@ -14,19 +15,13 @@ module Deferring
 
     alias_method :original_association, :__getobj__
 
-    delegate :[], :size, :length,
-
-             # SimpleDelegator
-             :to_s,
-             :to_a,
-             :inspect,
-             :==,
-
-             # Enumerable + Array stuff
-             # TODO: just take all methods from these modules?
-             :map, :detect, :clear, # ...
-
+    delegate :to_s, :to_a, :inspect, :==, # methods undefined by SimpleDelegator
+             :[], :clear, :size, :length, # methods on Array
              to: :objects
+
+    def each(&block)
+      objects.each(&block)
+    end
 
     # TODO: Add explanation about :first/:last loaded? problem.
     [:first, :last].each do |method|
@@ -37,6 +32,10 @@ module Deferring
           objects.send(method)
         end
       end
+    end
+
+    def find(*args)
+      original_association.find(*args)
     end
 
     # Rails 3.0 specific, not needed anymore for Rails 3.0+
