@@ -4,6 +4,7 @@ require 'delegate'
 
 module Deferring
   class DeferredAssociation < SimpleDelegator
+    # TODO: Write tests for enumerable.
     include Enumerable
 
     attr_reader :load_state
@@ -108,6 +109,7 @@ module Deferring
     # Returns the associated records to which links will be created after saving
     # the parent of the association.
     def pending_creates
+      return [] unless objects_loaded?
       objects - original_objects
     end
     alias_method :links, :pending_creates
@@ -115,6 +117,8 @@ module Deferring
     # Returns the associated records to which the links will be deleted after
     # saving the parent of the assocation.
     def pending_deletes
+      # TODO: Write test for it.
+      return [] unless objects_loaded?
       original_objects - objects
     end
     alias_method :unlinks, :pending_deletes
