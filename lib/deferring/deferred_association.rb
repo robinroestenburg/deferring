@@ -39,6 +39,14 @@ module Deferring
       original_association.find(*args)
     end
 
+    def select(value = Proc.new)
+      if block_given?
+        objects.select { |*block_args| value.call(*block_args) }
+      else
+        original_association.select(value)
+      end
+    end
+
     # Rails 3.0 specific, not needed anymore for Rails 3.0+
     def set_inverse_instance(associated_record, parent_record)
       original_association.__send__(:set_inverse_instance, associated_record, parent_record)

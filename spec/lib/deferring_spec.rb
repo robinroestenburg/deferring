@@ -143,6 +143,41 @@ describe Person do
   end
 
 
+  describe 'enumerable methods that conflict with ActiveRecord' do
+
+    describe '#select' do
+
+      before do
+        bob = Person.where(name: 'Bob').first
+        bob.teams << dba << support << operations
+        bob.save!
+      end
+
+      it 'selects specified columns directly from the database' do
+        bob = Person.where(name: 'Bob').first
+        teams = bob.teams.select('name')
+
+        expect(teams.map(&:name)).to eq ['Database Administration', 'End-User Support', 'Operations']
+        expect(teams.map(&:id)).to eq [nil, nil, nil]
+      end
+
+      it 'calls a block on the deferred associations' do
+        bob = Person.where(name: 'Bob').first
+        teams = bob.teams.select { |team| team.id == 1 }
+        expect(teams.map(&:id)).to eq [1]
+      end
+
+    end
+
+    describe 'find' do
+      # TODO
+    end
+
+    describe 'first' do
+      # TODO
+    end
+
+  end
 
   it 'does not create a link between person and teams until person is saved' do
     p = Person.new(name: 'Chuck')
