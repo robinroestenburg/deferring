@@ -72,7 +72,14 @@ module Deferring
       send(:"deferred_#{association_name}").ids
     end
 
-    # performs the save after the parent object has been saved
+    # collection_singalur_checked
+    attr_accessor :"#{association_name}_checked"
+    # collection_singalur_checked=
+    define_method(:"#{association_name}_checked=") do |ids|
+      send(:"#{association_name.singularize}_ids=", ids.split(','))
+    end
+
+    #  the save after the parent object has been saved
     after_save :"perform_deferred_#{association_name}_save!"
     define_method :"perform_deferred_#{association_name}_save!" do
       find_or_create_deferred_association(association_name)
