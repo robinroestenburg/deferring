@@ -17,7 +17,7 @@ module Deferring
     alias_method :original_association, :__getobj__
 
     delegate :to_s, :to_a, :inspect, :==, # methods undefined by SimpleDelegator
-             :[], :clear, :size, :length, # methods on Array
+             :[], :clear, :empty?, :size, :length, # methods on Array
              to: :objects
 
     def each(&block)
