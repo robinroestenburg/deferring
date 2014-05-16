@@ -2,9 +2,7 @@
 
 class Person < ActiveRecord::Base
   deferred_has_and_belongs_to_many :teams, before_add: :before_adding_team,
-                                           after_add: :after_adding_team,
-                                           before_remove: :before_removing_team,
-                                           after_remove: :after_removing_team
+                                           after_add: :after_adding_team
 
   deferred_accepts_nested_attributes_for :teams, allow_destroy: true
 

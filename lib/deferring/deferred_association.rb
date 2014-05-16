@@ -9,8 +9,9 @@ module Deferring
 
     attr_reader :load_state
 
-    def initialize(original_association)
+    def initialize(original_association, obj)
       super(original_association)
+      @obj = obj
       @load_state = :ghost
     end
 
@@ -90,7 +91,11 @@ module Deferring
 
     def delete(records)
       Array(records).flatten.uniq.each do |record|
-        objects.delete(record)
+        @obj.instance_variable_set(:@deferred_remove, record)
+        @obj.run_callbacks :deferred_remove do
+          objects.delete(record)
+        end
+        @obj.send(:remove_instance_variable, :@deferred_remove)
       end
       self
     end

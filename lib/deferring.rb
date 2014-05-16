@@ -20,6 +20,19 @@ module Deferring
     # Accessor for our own association.
     attr_accessor :"deferred_#{association_name}"
 
+    # before/afer remove callbacks
+    define_callbacks :deferred_remove, scope: [:kind, :name]
+    set_callback :deferred_remove, :before, lambda { |record|
+      send(:"before_removing_#{association_name.singularize}", self.instance_variable_get(:@deferred_remove))
+    }
+    set_callback :deferred_remove, :after, lambda { |record|
+      send(:"after_removing_#{association_name.singularize}", self.instance_variable_get(:@deferred_remove))
+    }
+    define_method :"before_removing_#{association_name.singularize}" do |record|
+    end
+    define_method :"after_removing_#{association_name.singularize}" do |record|
+    end
+
     # collection
     #
     # Returns an array of all the associated objects. An empty array is returned
@@ -72,7 +85,7 @@ module Deferring
       # Store the new value of the association into our delegated association.
       send(
         :"deferred_#{association_name}=",
-        DeferredAssociation.new(send(:"original_#{association_name}")))
+        DeferredAssociation.new(send(:"original_#{association_name}"), self))
 
     end
 
@@ -82,7 +95,7 @@ module Deferring
       send(:"reload_without_deferred_#{association_name}", *args).tap do
         send(
           :"deferred_#{association_name}=",
-          DeferredAssociation.new(send(:"original_#{association_name}")))
+          DeferredAssociation.new(send(:"original_#{association_name}"), self))
       end
     end
     alias_method_chain :reload, :"deferred_#{association_name}"
@@ -115,7 +128,7 @@ module Deferring
       if send(:"deferred_#{name}").nil?
         send(
           :"deferred_#{name}=",
-          DeferredAssociation.new(send(:"original_#{name}")))
+          DeferredAssociation.new(send(:"original_#{name}"), self))
       end
     end
   end
