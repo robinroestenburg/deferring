@@ -458,6 +458,37 @@ describe Person do
       expect(alice.save).to be_false
     end
 
+    # deferred_has_and_belongs_to_many :holidays, :uniq => true,
+    #                                             :validate => false,
+    #                                             :autosave => true,
+    #                                             :order => "start_at"
+
+    it 'should add invalid record when validate: false' do
+      alice = Person.where(name: 'Alice').first
+      alice.teams << dba
+      alice.save!
+
+      bob = Person.where(name: 'Bob').first
+      bob.teams << dba
+      bob.save!
+      expect(bob.teams).to eq [dba]
+
+      chuck = Person.create!(name: 'Chuck')
+      chuck.teams << dba
+      expect(chuck.teams).to eq [dba]
+      expect(chuck.save).to be_true
+    end
   end
+
+  it 'checks' do
+    bob = Person.where(name: 'Bob').first
+    bob.teams_checked = [dba.id, operations.id]
+    bob.save!
+
+    bob.reload
+
+    expect(bob.teams).to eq [dba, operations]
+  end
+
 
 end
