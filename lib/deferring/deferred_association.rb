@@ -73,6 +73,16 @@ module Deferring
       @original_objects = original_association.to_a.clone
       objects_loaded!
 
+      pending_deletes.each do |record|
+        # TODO: I don't like the fact that we know something about @obj in here.
+        #       Refactor to remove that (some kind of notification), it looks
+        #       terrible this way ;(
+        @obj.instance_variable_set(:@deferred_remove, record)
+        @obj.run_callbacks :deferred_remove do
+        end
+        @obj.send(:remove_instance_variable, :@deferred_remove)
+      end
+
       @objects
     end
 
