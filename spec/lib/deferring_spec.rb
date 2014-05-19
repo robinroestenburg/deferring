@@ -249,6 +249,18 @@ describe Person do
     expect(p.teams[1]).to eq(Team.last)
   end
 
+  it 'should compact ids' do
+    p = Person.first
+    p.teams = [Team.first]
+    expect(p.teams.length).to eq(1)
+    p.team_ids = [Team.first.id, '']
+    expect(p.teams.length).to eq(1)
+
+    expect{ p.save }.to change{ Person.first.teams.size }.from(0).to(1)
+
+    expect(p.teams[0]).to eq(Team.first)
+  end
+
   it 'should return ids' do
     p = Person.first
     p.teams = [Team.first, Team.last]

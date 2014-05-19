@@ -60,7 +60,7 @@ module Deferring
       find_or_create_deferred_association(association_name)
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
-      objects = klass.find(ids)
+      objects = klass.find(ids.reject(&:blank?))
       send(:"deferred_#{association_name}").objects = objects
     end
 
