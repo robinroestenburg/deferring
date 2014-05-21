@@ -1,14 +1,20 @@
 # encoding: UTF-8
 
 class Person < ActiveRecord::Base
-  deferred_has_and_belongs_to_many :teams, before_add: :before_adding_team,
-                                           after_add: :after_adding_team
+  deferred_has_and_belongs_to_many :teams, autosave: false,
+                                           before_add: :add_team,
+                                           after_add: :added_team
+  set_callback :deferred_team_remove, :before, lambda { |r| before_removing_team(r) }
+  set_callback :deferred_team_remove, :after, lambda { |r| after_removing_team(r) }
 
   deferred_accepts_nested_attributes_for :teams, allow_destroy: true
 
   validates_presence_of :name
 
-  has_many :issues
+  deferred_has_many :issues, before_add: :before_adding_issue,
+                             after_add: :after_adding_issue
+  set_callback :deferred_issue_remove, :before, lambda { |r| before_removing_issue(r) }
+  set_callback :deferred_issue_remove, :after, lambda { |r| after_removing_issue(r) }
 
   def audit_log
     @audit_log ||= []
@@ -19,11 +25,11 @@ class Person < ActiveRecord::Base
     audit_log
   end
 
-  def before_adding_team(team)
+  def add_team(team)
     log("Before adding team #{team.id}")
   end
 
-  def after_adding_team(team)
+  def added_team(team)
     log("After adding team #{team.id}")
   end
 
@@ -33,6 +39,14 @@ class Person < ActiveRecord::Base
 
   def after_removing_team(team)
     log("After removing team #{team.id}")
+  end
+
+  def before_adding_issue(issue)
+    log("Before removing issue #{issue.id}")
+  end
+
+  def after_adding_issue(issue)
+    log("After removing issue #{issue.id}")
   end
 end
 

@@ -9,8 +9,9 @@ module Deferring
 
     attr_reader :load_state
 
-    def initialize(original_association, obj)
+    def initialize(original_association, obj, name)
       super(original_association)
+      @name = name
       @obj = obj
       @load_state = :ghost
     end
@@ -77,10 +78,15 @@ module Deferring
         # TODO: I don't like the fact that we know something about @obj in here.
         #       Refactor to remove that (some kind of notification), it looks
         #       terrible this way ;(
-        @obj.instance_variable_set(:@deferred_remove, record)
-        @obj.run_callbacks :deferred_remove do
-        end
-        @obj.send(:remove_instance_variable, :@deferred_remove)
+        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_remove", record)
+        @obj.run_callbacks :"deferred_#{@name.singularize}_remove"
+        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_remove")
+      end
+
+      pending_creates.each do |record|
+        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_add", record)
+        @obj.run_callbacks :"deferred_#{@name.singularize}_add"
+        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_add")
       end
 
       @objects
@@ -93,7 +99,14 @@ module Deferring
     def <<(records)
       # TODO: Do we want to prevent including the same object twice? Not sure,
       # but it will probably be filtered after saving and retrieving as well.
-      objects.concat(Array(records).flatten)
+      Array(records).flatten.uniq.each do |record|
+        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_add", record)
+        @obj.run_callbacks :"deferred_#{@name.singularize}_add" do
+          objects << record
+        end
+        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_add")
+      end
+      objects
     end
     alias_method :push, :<<
     alias_method :concat, :<<
@@ -101,24 +114,26 @@ module Deferring
 
     def delete(records)
       Array(records).flatten.uniq.each do |record|
-        @obj.instance_variable_set(:@deferred_remove, record)
-        @obj.run_callbacks :deferred_remove do
+        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_remove", record)
+        @obj.run_callbacks :"deferred_#{@name.singularize}_remove" do
           objects.delete(record)
         end
-        @obj.send(:remove_instance_variable, :@deferred_remove)
+        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_remove")
       end
       self
     end
 
-    def build(*args)
-      association.build(args).tap do |result|
-        objects.concat(result)
+    def build(*args, &block)
+      association.build(*args, &block).tap do |result|
+        objects.push(result)
+        association.reload
       end
     end
 
-    def create!(*args)
-      association.create!(args).tap do |result|
-        objects.concat(result)
+    def create!(*args, &block)
+      association.create!(*args, &block).tap do |result|
+        @load_state = :ghost
+        load_objects
       end
     end
 

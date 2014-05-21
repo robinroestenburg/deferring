@@ -57,8 +57,7 @@ describe Person do
     end
   end
 
-  context 'reloading & resetting associations' do
-
+  describe 'reloading & resetting associations' do
     it 'should throw away unsaved changes when reloading the parent' do
       bob = Person.where(name: 'Bob').first
       bob.teams << operations
@@ -177,6 +176,63 @@ describe Person do
       # TODO
     end
 
+  end
+
+  describe 'pending creates & deletes (aka links and unlinks)' do
+    describe 'pending creates' do
+
+      it 'returns newly build records' do
+        bob = Person.first
+        bob.teams.build(name: 'Service Desk')
+        expect(bob.teams.pending_creates.size).to eq(1)
+      end
+
+      it 'does not return newly created records' do
+        bob = Person.first
+        bob.teams.create!(name: 'Service Desk')
+        expect(bob.teams.pending_creates).to be_empty
+      end
+
+      it 'returns associated records that need to be linked to parent' do
+        bob = Person.first
+        bob.teams = [Team.first]
+
+        expect(bob.teams.pending_creates).to eq [Team.first]
+      end
+
+      it 'does not return associated records that already have a link' do
+        bob = Person.first
+        bob.teams = [Team.first]
+        bob.save!
+
+        bob.teams << Team.last
+
+        expect(bob.teams.pending_creates).to_not include Team.first
+        expect(bob.teams.pending_creates).to include Team.last
+      end
+
+      it 'does not return associated records that are to be deleted' do
+        bob = Person.first
+        bob.teams = [Team.first, Team.last]
+        bob.save!
+        bob.teams.delete(Team.first)
+
+        expect(bob.teams.pending_creates).to be_empty
+      end
+
+      it 'does not return a record that has just been removed (and has not been saved)' do
+        bob = Person.first
+        bob.teams = [Team.first]
+        bob.save!
+
+        bob.teams.delete(Team.first)
+        bob.teams << Team.first
+
+        expect(bob.teams.pending_deletes).to be_empty
+        expect(bob.teams.pending_creates).to be_empty
+      end
+
+    end
   end
 
   it 'does not create a link between person and teams until person is saved' do

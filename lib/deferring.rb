@@ -11,8 +11,39 @@ module Deferring
   # object has been saved.
   def deferred_has_and_belongs_to_many(*args)
     has_and_belongs_to_many(*args)
+    generate_deferred_association_methods(args.first.to_s)
+  end
+
+  # Creates a wrapper around `has_many`. A normal has many association is
+  # created, but this association is wrapped in a DeferredAssociation. The
+  # accessor methods of the original association are replaced with ones that
+  # will defer saving the association until the parent object has been saved.
+  def deferred_has_many(*args)
+    has_many(*args)
+    generate_deferred_association_methods(args.first.to_s)
+  end
+
+  def deferred_accepts_nested_attributes_for(*args)
+    accepts_nested_attributes_for(*args)
     association_name = args.first.to_s
 
+    # teams_attributes=
+    define_method :"#{association_name}_attributes=" do |records|
+      find_or_create_deferred_association(association_name)
+
+      # Remove the records that are to be destroyed from the ids that are to be
+      # assigned to the DeferredAssociation instance.
+      records.reject! { |record| record[:_destroy] }
+
+      klass = self.class.reflect_on_association(:"#{association_name}").klass
+      objects = klass.find(records.map { |record| record[:id] })
+      send(:"deferred_#{association_name}").objects = objects
+    end
+
+    generate_find_or_create_deferred_association_method
+  end
+
+  def generate_deferred_association_methods(association_name)
     # Store the original accessor methods of the association.
     alias_method :"original_#{association_name}", :"#{association_name}"
     alias_method :"original_#{association_name}=", :"#{association_name}="
@@ -21,17 +52,8 @@ module Deferring
     attr_accessor :"deferred_#{association_name}"
 
     # before/afer remove callbacks
-    define_callbacks :deferred_remove, scope: [:kind, :name]
-    set_callback :deferred_remove, :before, lambda { |record|
-      send(:"before_removing_#{association_name.singularize}", self.instance_variable_get(:@deferred_remove))
-    }
-    set_callback :deferred_remove, :after, lambda { |record|
-      send(:"after_removing_#{association_name.singularize}", self.instance_variable_get(:@deferred_remove))
-    }
-    define_method :"before_removing_#{association_name.singularize}" do |record|
-    end
-    define_method :"after_removing_#{association_name.singularize}" do |record|
-    end
+    define_callbacks :"deferred_#{association_name.singularize}_remove", scope: [:kind, :name]
+    define_callbacks :"deferred_#{association_name.singularize}_add", scope: [:kind, :name]
 
     # collection
     #
@@ -92,7 +114,7 @@ module Deferring
       # Store the new value of the association into our delegated association.
       send(
         :"deferred_#{association_name}=",
-        DeferredAssociation.new(send(:"original_#{association_name}"), self))
+        DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
 
     end
 
@@ -102,30 +124,10 @@ module Deferring
       send(:"reload_without_deferred_#{association_name}", *args).tap do
         send(
           :"deferred_#{association_name}=",
-          DeferredAssociation.new(send(:"original_#{association_name}"), self))
+          DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
       end
     end
     alias_method_chain :reload, :"deferred_#{association_name}"
-
-    generate_find_or_create_deferred_association_method
-  end
-
-  def deferred_accepts_nested_attributes_for(*args)
-    accepts_nested_attributes_for(*args)
-    association_name = args.first.to_s
-
-    # teams_attributes=
-    define_method :"#{association_name}_attributes=" do |records|
-      find_or_create_deferred_association(association_name)
-
-      # Remove the records that are to be destroyed from the ids that are to be
-      # assigned to the DeferredAssociation instance.
-      records.reject! { |record| record[:_destroy] }
-
-      klass = self.class.reflect_on_association(:"#{association_name}").klass
-      objects = klass.find(records.map { |record| record[:id] })
-      send(:"deferred_#{association_name}").objects = objects
-    end
 
     generate_find_or_create_deferred_association_method
   end
@@ -135,7 +137,7 @@ module Deferring
       if send(:"deferred_#{name}").nil?
         send(
           :"deferred_#{name}=",
-          DeferredAssociation.new(send(:"original_#{name}"), self))
+          DeferredAssociation.new(send(:"original_#{name}"), self, name))
       end
     end
   end
