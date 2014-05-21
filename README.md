@@ -9,29 +9,31 @@ It is important to note that Deferring does not touch the original `has_many`
 and `has_and_belongs_to_many` associations. You can use them, without worrying
 about any changed behaviour or side-effects from using Deferring.
 
-## Credits/Rationale
-
-The ideas of this gem was originally thought of by TylerRick (see this thread).
-The gem created by TylerRick is still available, but not maintained. This gem
-has been forked by (among others) MartinKoener - who added Rails 3 support.
-
-TODO: Add links.
-
-A project I am working on, uses the `autosave_habtm` gem, which kind of takes
-different approach to doing the same thing. This gem only supported Rails 3.0.
-
-As we are upgrading to Rails 3.2 (and later Rails 4), I needed a gem to provide
-this behaviour. Upgrading either one of the gems would result into rewriting a
-lot of the code (for different reasons, some purely esthetic :)), so that is why
-I wrote a new gem.
-
 
 ## Why use it?
 
 Let's take a look at the following example:
 
 ``` ruby
-TODO
+class Person
+  has_and_belongs_to_many :teams
+  validates :name, presence: true
+end
+
+class Team
+  has_and_belongs_to_many :people
+end
+
+support = Team.create(name: 'Support')
+person = Person.create(name: 'Bob')
+
+person.teams << support
+person.name = nil
+person.save
+# => false, because the name attribute is empty
+
+Person.first.teams
+# => [#<Team id: 4, name: "Support", ... ]
 ```
 
 The links to the Teams associated to the Person are stored directly, before the
@@ -40,11 +42,28 @@ and `has_and_belongs_to_many` associations work, but not how (imho) they should
 work in this situation.
 
 The `deferring` gem will delay creating the links between Person and Team until
-the Person has been saved succesfully. Let's look at the aforementioned example
-again, now using the `deferring` gem:
+the Person has been saved successfully. Let's look at the example again, only
+now using the `deferring` gem:
 
 ``` ruby
-TODO
+class Person
+  deferred_has_and_belongs_to_many :teams
+  validates :name, presence: true
+end
+
+class Team
+  has_and_belongs_to_many :people
+end
+support = Team.create(name: 'Support')
+person = Person.create(name: 'Bob')
+
+person.teams << support
+person.name = nil
+person.save
+# => false, because the name attribute is empty
+
+Person.first.teams
+# => []
 ```
 
 
@@ -54,13 +73,36 @@ TODO
 * ...
 
 
+## Credits/Rationale
+
+The idea for this gem was originally thought of by Tyler Rick (see [this Ruby
+form thread from 2006](https://www.ruby-forum.com/topic/81095)). The gem created
+by TylerRick is still
+[available](https://github.com/TylerRick/has_and_belongs_to_many_with_deferred_save),
+but unmaintained. This gem has been forked by Martin Koerner, who released his
+fork as a gem called
+[`deferred_associations`](https://rubygems.org/gems/deferred_associations).
+Koerner fixes some issues with Rick's original implementation and added support
+for Rails 3 and 4.
+
+A project I am working on, uses the
+[`autosave_habtm`](https://rubygems.org/gems/autosave_habtm) gem, which kind of
+takes different approach to doing the same thing. This gem only supports Rails
+3.0.
+
+As we are upgrading to Rails 3.2 (and later Rails 4), I needed a gem to provide
+this behaviour. Upgrading either one of the gems would result into rewriting a
+lot of the code (for different reasons, some purely esthetic :)), so that is why
+I wrote a new gem.
+
+
 ## Getting started
 
 ### Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'delay_many'
+    gem 'deferring'
 
 And then execute:
 
@@ -68,7 +110,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install delay_many
+    $ gem install deferring
 
 
 ### How do I use it?
@@ -80,19 +122,28 @@ Deferring adds a couple of methods to your ActiveRecord models. These are:
 - `deferred_has_many`
 
 These methods wrap the existing methods. For instance, `deferred_has_many` will
-call `has_many` in order to set up the assocation.
+call `has_many` in order to set up the association.
+
+**TODO** Describe pending_creates/pending_deletes/links/unlinks/callbacks/
+original_name/checked.
+
 
 ### How does it work?
 
-Deferring wraps the original association and replaces the accessor methods to
-the association by a custom object that will keep track of the updates to the
-association. When the parent is saved (using an `after_save`), this object is
-assigned to the original association which will automatically save the changes
-to the database.
+Deferring wraps the original ActiveRecord association and replaces the accessor
+methods to the association by a custom object that will keep track of the
+updates to the association. This wrapper is basically an array with some extras
+to match the ActiveRecord API.
+
+When the parent is saved, this object is assigned to the original association
+(using an `after_save` callback on the parent model) which will automatically
+save the changes to the database.
 
 ### Gotchas
 
 #### Using custom callback methods
+
+**TODO**: This is incorrect, rewrite.
 
 You can use custom callback functions. However, the callbacks for defferred
 associations are triggered at a different point in time.
