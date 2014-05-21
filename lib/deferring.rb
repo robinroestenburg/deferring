@@ -52,6 +52,7 @@ module Deferring
     attr_accessor :"deferred_#{association_name}"
 
     # before/afer remove callbacks
+    define_callbacks :"deferred_#{association_name}_save", scope: [:kind, :name]
     define_callbacks :"deferred_#{association_name.singularize}_remove", scope: [:kind, :name]
     define_callbacks :"deferred_#{association_name.singularize}_add", scope: [:kind, :name]
 
@@ -104,18 +105,19 @@ module Deferring
     #  the save after the parent object has been saved
     after_save :"perform_deferred_#{association_name}_save!"
     define_method :"perform_deferred_#{association_name}_save!" do
-      find_or_create_deferred_association(association_name)
+      run_callbacks :"deferred_#{association_name}_save" do
+        find_or_create_deferred_association(association_name)
 
-      # Send the objects of our delegated association to the original
-      # association and store the result.
-      send(:"original_#{association_name}=",
-           send(:"deferred_#{association_name}").objects)
+        # Send the objects of our delegated association to the original
+        # association and store the result.
+        send(:"original_#{association_name}=",
+             send(:"deferred_#{association_name}").objects)
 
-      # Store the new value of the association into our delegated association.
-      send(
-        :"deferred_#{association_name}=",
-        DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
-
+        # Store the new value of the association into our delegated association.
+        send(
+          :"deferred_#{association_name}=",
+          DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
+      end
     end
 
     define_method :"reload_with_deferred_#{association_name}" do |*args|
