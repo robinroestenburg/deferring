@@ -10,9 +10,9 @@ Gem::Specification.new do |spec|
   spec.email         = ['robin@roestenburg.io']
   spec.description   = %q{
     The Deferring gem makes it possible to defer saving ActiveRecord
-    associations until the parent object is validated.
+    associations until the parent object is saved.
   }
-  spec.summary       = %q{Defer saving ActiveRecord associations until parent is validated}
+  spec.summary       = %q{Defer saving ActiveRecord associations until parent is saved}
   spec.homepage      = 'http://github.com/robinroestenburg/delay_many'
   spec.license       = "MIT"
 
