@@ -3,12 +3,13 @@
 Deferring makes it possible to delay saving ActiveRecord associations until the
 parent object has been saved.
 
-Currently supporting Rails 3.0, 3.2, 4.0 and 4.1.
+Currently supporting Rails 3.0, 3.2, 4.0 and 4.1 on Ruby 1.9.3.
 
 It is important to note that Deferring does not touch the original `has_many`
 and `has_and_belongs_to_many` associations. You can use them, without worrying
 about any changed behaviour or side-effects from using Deferring.
 
+**NOTE: This is currently work in progress.**
 
 ## Why use it?
 
@@ -124,7 +125,7 @@ Deferring adds a couple of methods to your ActiveRecord models. These are:
 These methods wrap the existing methods. For instance, `deferred_has_many` will
 call `has_many` in order to set up the association.
 
-**TODO** Describe pending_creates/pending_deletes/links/unlinks/callbacks/
+**TODO:** Describe pending_creates/pending_deletes/links/unlinks/callbacks/
 original_name/checked.
 
 
@@ -139,11 +140,38 @@ When the parent is saved, this object is assigned to the original association
 (using an `after_save` callback on the parent model) which will automatically
 save the changes to the database.
 
+For the astute reader: Yes, the gem abuses the exact problem it is trying to
+avoid ;-)
+
 ### Gotchas
+
+#### Using autosave (or not actually)
+
+TL;DR; Using `autosave: true` (or false) on a deferred association will work,
+but does not do anything.
+
+This is what the Rails documentation says about the AutosaveAssociation:
+
+_AutosaveAssociation is a module that takes care of automatically saving
+associated records when their parent is saved. In addition to saving, it also
+destroys any associated records that were marked for destruction._
+
+_If validations for any of the associations fail, their error messages will be
+applied to the parent._
+
+The `deferring` gem works with `pending_deletes` (or the alias `unlinks`)
+instead of the `marked_for_destruction` flag, so everything related to that in
+AutosaveAssociation does not work as you would expect.
+
+Also, `deferring` adds the associated records present in a deferred
+association to the original (in this case, autosaved) association by assigning
+the array of associated records to original association. This kind of assignment
+bypasses the autosave behaviour, see the _Why use it?_ part on top of this
+README.
 
 #### Using custom callback methods
 
-**TODO**: This is incorrect, rewrite.
+**TODO**: This is incorrect and has to be rewritten to match code.
 
 You can use custom callback functions. However, the callbacks for defferred
 associations are triggered at a different point in time.
@@ -192,13 +220,12 @@ person.audit_log # => ['Before adding Pet 1']
 
 ## TODO
 
+* add support for more Rubies
 * check out what is going on with uniq: true
 * collection(true) (same as reload)
 * collection.replace
-* `set_inverse_instance`?
-* add service on one side of the collection, will not make it through to the
-  other side?
 * validations!
+* validate: false does not work
 
 ## Contributing
 
