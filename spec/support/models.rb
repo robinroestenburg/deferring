@@ -1,19 +1,19 @@
 # encoding: UTF-8
 
 class Person < ActiveRecord::Base
-  deferred_has_and_belongs_to_many :teams, autosave: false,
-                                           before_add: :add_team,
+
+  deferred_has_and_belongs_to_many :teams, before_add: :add_team,
                                            after_add: :added_team
   set_callback :deferred_team_remove, :before, :before_removing_team
   set_callback :deferred_team_remove, :after, :after_removing_team
 
   deferred_accepts_nested_attributes_for :teams, allow_destroy: true
 
-  validates_presence_of :name
-
   deferred_has_many :issues
   set_callback :deferred_issue_remove, :before, :before_removing_issue
   set_callback :deferred_issue_remove, :after, :after_removing_issue
+
+  validates_presence_of :name
 
   def audit_log
     @audit_log ||= []
@@ -52,6 +52,7 @@ end
 class Team < ActiveRecord::Base
   has_and_belongs_to_many :people
 
+  validates :name, presence: true
   validate :no_more_than_two_people_per_team
 
   def no_more_than_two_people_per_team
