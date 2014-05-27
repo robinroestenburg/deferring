@@ -19,6 +19,7 @@ module Deferring
     alias_method :original_association, :__getobj__
 
     delegate :to_s, :to_a, :inspect, :==, # methods undefined by SimpleDelegator
+             :is_a?, :as_json,
 
              :[], :clear, :reject, :reject!, :flatten, :flatten!, :sort!,
              :empty?, :size, :length, # methods on Array
