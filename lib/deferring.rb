@@ -110,13 +110,18 @@ module Deferring
 
         # Send the objects of our delegated association to the original
         # association and store the result.
-        send(:"original_#{association_name}=",
-             send(:"deferred_#{association_name}").objects)
+        send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
+
+        send(:"deferred_#{association_name}").objects.each do |record|
+          record.run_callbacks :commit do
+          end
+        end
 
         # Store the new value of the association into our delegated association.
         send(
           :"deferred_#{association_name}=",
           DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
+
       end
     end
 
