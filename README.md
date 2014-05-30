@@ -6,7 +6,7 @@
 Deferring makes it possible to delay saving ActiveRecord associations until the
 parent object has been saved.
 
-Currently supporting Rails 3.0, 3.2, 4.0 and 4.1 on Ruby 1.9.3.
+Currently supporting Rails 3.0, 3.2, 4.0 & 4.1 on Ruby 1.9.3, 2.0.0 & 2.1.0.
 
 It is important to note that Deferring does not touch the original `has_many`
 and `has_and_belongs_to_many` associations. You can use them, without worrying
