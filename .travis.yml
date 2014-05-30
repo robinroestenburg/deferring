@@ -1,8 +1,7 @@
 rvm:
   - '1.9.3'
   - '2.0.0'
-  - 'jruby-19mode'
-  - 'ruby-head'
+  - '2.1.0'
 
 gemfile:
   - gemfiles/rails_30.gemfile
