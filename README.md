@@ -1,5 +1,8 @@
 # Deferring
 
+![Build Status](http://img.shields.io/travis/robinroestenburg/deferring.svg?style=flat)
+![Gem Version](http://img.shields.io/gem/v/deferring.svg?style=flat)
+
 Deferring makes it possible to delay saving ActiveRecord associations until the
 parent object has been saved.
 
