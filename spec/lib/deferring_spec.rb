@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'deferred has-and-belongs-to-many associations' do
+RSpec.describe 'deferred has-and-belongs-to-many associations' do
 
   before :each do
     Person.create!(name: 'Alice')
@@ -122,8 +122,8 @@ describe 'deferred has-and-belongs-to-many associations' do
         dba = Team.first
         dba.people = [Person.first, Person.find(2), Person.last]
 
-        dba.people.size.should eq 2
-        dba.person_ids.should eq [1,2]
+        expect(dba.people.size).to eq 2
+        expect(dba.person_ids).to eq [1,2]
       end
     end
 
@@ -140,7 +140,7 @@ describe 'deferred has-and-belongs-to-many associations' do
       it 'loads the association' do
         person = Person.where(name: 'Bob').first
         Person.send(:preload_associations, person, [:teams])
-        expect(person.teams.loaded?).to be_true
+        expect(person.teams.loaded?).to be_truthy
         expect(person.team_ids).to eq [dba.id, support.id]
       end
     end
@@ -148,26 +148,26 @@ describe 'deferred has-and-belongs-to-many associations' do
     if rails32 || rails4
       it 'loads the association when pre-loading' do
         person = Person.preload(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_true
+        expect(person.teams.loaded?).to be_truthy
         expect(person.team_ids).to eq [dba.id, support.id]
       end
 
       it 'loads the association when eager loading' do
         person = Person.eager_load(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_true
+        expect(person.teams.loaded?).to be_truthy
         expect(person.team_ids).to eq [dba.id, support.id]
       end
 
       it 'loads the association when joining' do
         person = Person.includes(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_true
+        expect(person.teams.loaded?).to be_truthy
         expect(person.team_ids).to eq [dba.id, support.id]
       end
     end
 
     it 'does not load the association when using a regular query' do
       person = Person.where(name: 'Bob').first
-      expect(person.teams.loaded?).to be_false
+      expect(person.teams.loaded?).to be_falsey
     end
 
   end
@@ -408,11 +408,11 @@ describe 'deferred has-and-belongs-to-many associations' do
       p.teams = [Team.first, Team.find(3)]
       p.save
       teams = Person.first.teams
-      teams.loaded?.should == false
-      teams.find(3).should ==  Team.find(3)
-      teams.first.should == Team.first
-      teams.last.should == Team.find(3)
-      teams.loaded?.should == false
+      expect(teams.loaded?).to eq(false)
+      expect(teams.find(3)).to eq(Team.find(3))
+      expect(teams.first).to eq(Team.first)
+      expect(teams.last).to eq(Team.find(3))
+      expect(teams.loaded?).to eq(false)
     end
 
   end
@@ -427,13 +427,13 @@ describe 'deferred has-and-belongs-to-many associations' do
     bob.teams << Team.find(2)
     bob.save!
 
-    bob.audit_log.length.should == 4
-    bob.audit_log.should == [
+    expect(bob.audit_log.length).to eq(4)
+    expect(bob.audit_log).to eq([
       'Before removing team 1',
       'After removing team 1',
       'Before adding team 2',
       'After adding team 2'
-    ]
+    ])
   end
 
   describe 'accepts_nested_attributes' do
@@ -452,18 +452,18 @@ describe 'deferred has-and-belongs-to-many associations' do
           { id: 2, _destroy: true }
         ]
       }
-      p.teams.length.should == 1
-      p.team_ids.sort.should == [1]
+      expect(p.teams.length).to eq(1)
+      expect(p.team_ids.sort).to eq([1])
 
       Person.first
-      Person.first.teams.length.should == 3
-      Person.first.team_ids.sort.should == [1,2,3]
+      expect(Person.first.teams.length).to eq(3)
+      expect(Person.first.team_ids.sort).to eq([1,2,3])
 
       p.save!
 
       p = Person.first
-      p.teams.length.should == 1
-      p.team_ids.sort.should == [1]
+      expect(p.teams.length).to eq(1)
+      expect(p.team_ids.sort).to eq([1])
     end
 
     it 'should mass assign' do
@@ -478,18 +478,18 @@ describe 'deferred has-and-belongs-to-many associations' do
         { id: 3, _destroy: true },
         { id: 2, _destroy: true }
       ]
-      p.teams.length.should == 1
-      p.team_ids.sort.should == [1]
+      expect(p.teams.length).to eq(1)
+      expect(p.team_ids.sort).to eq([1])
 
       Person.first
-      Person.first.teams.length.should == 3
-      Person.first.team_ids.sort.should == [1,2,3]
+      expect(Person.first.teams.length).to eq(3)
+      expect(Person.first.team_ids.sort).to eq([1,2,3])
 
       p.save!
 
       p = Person.first
-      p.teams.length.should == 1
-      p.team_ids.sort.should == [1]
+      expect(p.teams.length).to eq(1)
+      expect(p.team_ids.sort).to eq([1])
     end
   end
 
@@ -518,8 +518,8 @@ describe 'deferred has-and-belongs-to-many associations' do
       expect(bob).to_not be_valid
       expect(alice).to_not be_valid
 
-      expect(bob.save).to be_false
-      expect(alice.save).to be_false
+      expect(bob.save).to be_falsey
+      expect(alice.save).to be_falsey
     end
 
     xit 'does not validate records when validate: false' do
