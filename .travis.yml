@@ -7,14 +7,12 @@ rvm:
   - jruby-19mode
   - ruby-head
   - jruby-head
-  - ree
 
 matrix:
   allow_failures:
     - rvm: jruby-19mode
     - rvm: ruby-head
     - rvm: jruby-head
-    - rvm: ree
 
 gemfile:
   - gemfiles/rails_30.gemfile
