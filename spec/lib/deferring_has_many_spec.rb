@@ -41,7 +41,6 @@ RSpec.describe 'deferred has-many association' do
       it 'should have loaded the association when eager loading' do
         people = Person.eager_load(:issues)
         expect(people[0].issues.loaded?).to be_truthy
-        # TODO: Check sort
         expect(people[0].issue_ids).to eq [db_issue.id, printer_issue.id]
       end
 
