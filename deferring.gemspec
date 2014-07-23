@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
     associations until the parent object is saved.
   }
   spec.summary       = %q{Defer saving ActiveRecord associations until parent is saved}
-  spec.homepage      = 'http://github.com/robinroestenburg/delay_many'
+  spec.homepage      = 'http://github.com/robinroestenburg/deferring'
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
