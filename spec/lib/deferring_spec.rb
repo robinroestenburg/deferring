@@ -417,7 +417,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
 
   end
 
-  it 'should call before_add, after_add, before_remove, after_remove callbacks' do
+  it 'should call the regular before_add, after_add, before_remove, after_remove callbacks' do
     bob = Person.first
     bob.teams = [Team.first, Team.find(3)]
     bob.save!
@@ -427,12 +427,34 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     bob.teams << Team.find(2)
     bob.save!
 
-    expect(bob.audit_log.length).to eq(4)
+    expect(bob.audit_log.length).to eq(8)
     expect(bob.audit_log).to eq([
+      'Before unlinking team 1',
+      'After unlinking team 1',
+      'Before linking team 2',
+      'After linking team 2',
       'Before removing team 1',
       'After removing team 1',
       'Before adding team 2',
       'After adding team 2'
+    ])
+  end
+
+  it 'should call the link/unlink callbacks' do
+    bob = Person.first
+    bob.teams = [Team.find(3)]
+    bob.save!
+
+    bob = Person.first
+    bob.teams << Team.find(1)
+    bob.teams.delete(bob.teams[0])
+
+    expect(bob.audit_log.length).to eq(4)
+    expect(bob.audit_log).to eq([
+      'Before linking team 1',
+      'After linking team 1',
+      'Before unlinking team 3',
+      'After unlinking team 3',
     ])
   end
 

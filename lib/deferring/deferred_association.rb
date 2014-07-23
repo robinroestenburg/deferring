@@ -9,10 +9,9 @@ module Deferring
 
     attr_reader :load_state
 
-    def initialize(original_association, obj, name)
+    def initialize(original_association, name)
       super(original_association)
       @name = name
-      @obj = obj
       @load_state = :ghost
     end
 
@@ -78,20 +77,8 @@ module Deferring
       @original_objects = original_association.to_a.clone
       objects_loaded!
 
-      pending_deletes.each do |record|
-        # TODO: I don't like the fact that we know something about @obj in here.
-        #       Refactor to remove that (some kind of notification), it looks
-        #       terrible this way ;(
-        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_remove", record)
-        @obj.run_callbacks :"deferred_#{@name.singularize}_remove"
-        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_remove")
-      end
-
-      pending_creates.each do |record|
-        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_add", record)
-        @obj.run_callbacks :"deferred_#{@name.singularize}_add"
-        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_add")
-      end
+      pending_deletes.each { |record| run_unlink_callbacks(record) }
+      pending_creates.each { |record| run_link_callbacks(record) }
 
       @objects
     end
@@ -104,13 +91,11 @@ module Deferring
       # TODO: Do we want to prevent including the same object twice? Not sure,
       # but it will probably be filtered after saving and retrieving as well.
       Array(records).flatten.uniq.each do |record|
-        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_add", record)
-        @obj.run_callbacks :"deferred_#{@name.singularize}_add" do
+        run_link_callbacks(record) do
           objects << record
         end
-        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_add")
       end
-      objects
+      self
     end
     alias_method :push, :<<
     alias_method :concat, :<<
@@ -118,11 +103,9 @@ module Deferring
 
     def delete(records)
       Array(records).flatten.uniq.each do |record|
-        @obj.instance_variable_set(:"@deferred_#{@name.singularize}_remove", record)
-        @obj.run_callbacks :"deferred_#{@name.singularize}_remove" do
+        run_unlink_callbacks(record) do
           objects.delete(record)
         end
-        @obj.send(:remove_instance_variable, :"@deferred_#{@name.singularize}_remove")
       end
       self
     end
@@ -165,6 +148,11 @@ module Deferring
     end
     alias_method :unlinks, :pending_deletes
 
+    # Custom callback stuff
+    def add_listener(listener)
+      (@listeners ||= []) << listener
+    end
+
     private
 
     def load_objects
@@ -181,6 +169,26 @@ module Deferring
 
     def objects_loaded!
       @load_state = :loaded
+    end
+
+    def run_unlink_callbacks(record)
+      notify_listeners(:before_unlink, record)
+      yield if block_given?
+      notify_listeners(:after_unlink, record)
+    end
+
+    def run_link_callbacks(record)
+      notify_listeners(:before_link, record)
+      yield if block_given?
+      notify_listeners(:after_link, record)
+    end
+
+    def notify_listeners(event_name, record)
+      @listeners && @listeners.each do |listener|
+        if listener.event_name == event_name
+          listener.public_send(event_name, record)
+        end
+      end
     end
 
   end

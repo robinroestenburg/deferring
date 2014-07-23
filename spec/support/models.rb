@@ -2,16 +2,19 @@
 
 class Person < ActiveRecord::Base
 
-  deferred_has_and_belongs_to_many :teams, before_add: :add_team,
-                                           after_add: :added_team
-  set_callback :deferred_team_remove, :before, :before_removing_team
-  set_callback :deferred_team_remove, :after, :after_removing_team
+  deferred_has_and_belongs_to_many :teams, before_link: :link_team,
+                                           after_link: :linked_team,
+                                           before_unlink: :unlink_team,
+                                           after_unlink: :unlinked_team,
+                                           before_add: :add_team,
+                                           after_add: :added_team,
+                                           before_remove: :remove_team,
+                                           after_remove: :removed_team
 
   deferred_accepts_nested_attributes_for :teams, allow_destroy: true
 
-  deferred_has_many :issues
-  set_callback :deferred_issue_remove, :before, :before_removing_issue
-  set_callback :deferred_issue_remove, :after, :after_removing_issue
+  deferred_has_many :issues, before_remove: :remove_issue,
+                             after_remove: :removed_issue
 
   validates_presence_of :name
 
@@ -24,6 +27,22 @@ class Person < ActiveRecord::Base
     audit_log
   end
 
+  def link_team(team)
+    log("Before linking team #{team.id}")
+  end
+
+  def linked_team(team)
+    log("After linking team #{team.id}")
+  end
+
+  def unlink_team(team)
+    log("Before unlinking team #{team.id}")
+  end
+
+  def unlinked_team(team)
+    log("After unlinking team #{team.id}")
+  end
+
   def add_team(team)
     log("Before adding team #{team.id}")
   end
@@ -32,20 +51,20 @@ class Person < ActiveRecord::Base
     log("After adding team #{team.id}")
   end
 
-  def before_removing_team
-    log("Before removing team #{@deferred_team_remove.id}")
+  def remove_team(team)
+    log("Before removing team #{team.id}")
   end
 
-  def after_removing_team
-    log("After removing team #{@deferred_team_remove.id}")
+  def removed_team(team)
+    log("After removing team #{team.id}")
   end
 
-  def before_adding_issue
-    log("Before removing issue #{@deferred_issue_add.id}")
+  def add_issue(issue)
+    log("Before removing issue #{issue.id}")
   end
 
-  def after_adding_issue
-    log("After removing issue #{@deferred_issue_add.id}")
+  def added_issue(issue)
+    log("After removing issue #{issue.id}")
   end
 end
 

@@ -2,6 +2,7 @@
 
 require 'deferring/version'
 require 'deferring/deferred_association'
+require 'deferring/deferred_callback_listener'
 
 module Deferring
   # Creates a wrapper around `has_and_belongs_to_many`. A normal habtm
@@ -10,8 +11,11 @@ module Deferring
   # replaced with ones that will defer saving the association until the parent
   # object has been saved.
   def deferred_has_and_belongs_to_many(*args)
-    has_and_belongs_to_many(*args)
-    generate_deferred_association_methods(args.first.to_s)
+    options = args.extract_options!
+    listeners = create_callback_listeners(options)
+
+    has_and_belongs_to_many(*args, options)
+    generate_deferred_association_methods(args.first.to_s, listeners)
   end
 
   # Creates a wrapper around `has_many`. A normal has many association is
@@ -19,8 +23,11 @@ module Deferring
   # accessor methods of the original association are replaced with ones that
   # will defer saving the association until the parent object has been saved.
   def deferred_has_many(*args)
-    has_many(*args)
-    generate_deferred_association_methods(args.first.to_s)
+    options = args.extract_options!
+    listeners = create_callback_listeners(options)
+
+    has_many(*args, options)
+    generate_deferred_association_methods(args.first.to_s, listeners)
   end
 
   def deferred_accepts_nested_attributes_for(*args)
@@ -29,7 +36,7 @@ module Deferring
 
     # teams_attributes=
     define_method :"#{association_name}_attributes=" do |records|
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, [])
 
       # Remove the records that are to be destroyed from the ids that are to be
       # assigned to the DeferredAssociation instance.
@@ -43,7 +50,9 @@ module Deferring
     generate_find_or_create_deferred_association_method
   end
 
-  def generate_deferred_association_methods(association_name)
+  private
+
+  def generate_deferred_association_methods(association_name, listeners)
     # Store the original accessor methods of the association.
     alias_method :"original_#{association_name}", :"#{association_name}"
     alias_method :"original_#{association_name}=", :"#{association_name}="
@@ -51,18 +60,13 @@ module Deferring
     # Accessor for our own association.
     attr_accessor :"deferred_#{association_name}"
 
-    # before/afer remove callbacks
-    define_callbacks :"deferred_#{association_name}_save", scope: [:kind, :name]
-    define_callbacks :"deferred_#{association_name.singularize}_remove", scope: [:kind, :name]
-    define_callbacks :"deferred_#{association_name.singularize}_add", scope: [:kind, :name]
-
     # collection
     #
     # Returns an array of all the associated objects. An empty array is returned
     # if none are found.
     # TODO: add force_reload argument?
     define_method :"#{association_name}" do
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
       send(:"deferred_#{association_name}")
     end
 
@@ -71,7 +75,7 @@ module Deferring
     # Replaces the collection's content by deleting and adding objects as
     # appropriate.
     define_method :"#{association_name}=" do |objects|
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
       send(:"deferred_#{association_name}").objects = objects
     end
 
@@ -80,7 +84,7 @@ module Deferring
     # Replace the collection by the objects identified by the primary keys in
     # ids.
     define_method :"#{association_name.singularize}_ids=" do |ids|
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       objects = klass.find(ids.reject(&:blank?))
@@ -91,7 +95,7 @@ module Deferring
     #
     # Returns an array of the associated objects' ids.
     define_method :"#{association_name.singularize}_ids" do
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
       send(:"deferred_#{association_name}").ids
     end
 
@@ -105,27 +109,33 @@ module Deferring
     #  the save after the parent object has been saved
     after_save :"perform_deferred_#{association_name}_save!"
     define_method :"perform_deferred_#{association_name}_save!" do
-      run_callbacks :"deferred_#{association_name}_save" do
-        find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
 
-        # Send the objects of our delegated association to the original
-        # association and store the result.
-        send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
+      # Send the objects of our delegated association to the original
+      # association and store the result.
+      send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
 
-        # Store the new value of the association into our delegated association.
-        send(
-          :"deferred_#{association_name}=",
-          DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
+      # Store the new value of the association into our delegated association.
+      send(
+        :"deferred_#{association_name}=",
+        DeferredAssociation.new(send(:"original_#{association_name}"), association_name))
+      listeners.each do |event_name, callback_method|
+        l = DeferredCallbackListener.new(event_name, self, callback_method)
+        send(:"deferred_#{association_name}").add_listener(l)
       end
     end
 
     define_method :"reload_with_deferred_#{association_name}" do |*args|
-      find_or_create_deferred_association(association_name)
+      find_or_create_deferred_association(association_name, listeners)
 
       send(:"reload_without_deferred_#{association_name}", *args).tap do
         send(
           :"deferred_#{association_name}=",
-          DeferredAssociation.new(send(:"original_#{association_name}"), self, association_name))
+          DeferredAssociation.new(send(:"original_#{association_name}"), association_name))
+        listeners.each do |event_name, callback_method|
+          l = DeferredCallbackListener.new(event_name, self, callback_method)
+          send(:"deferred_#{association_name}").add_listener(l)
+        end
       end
     end
     alias_method_chain :reload, :"deferred_#{association_name}"
@@ -134,14 +144,26 @@ module Deferring
   end
 
   def generate_find_or_create_deferred_association_method
-    define_method :find_or_create_deferred_association do |name|
+    define_method :find_or_create_deferred_association do |name, listeners|
       if send(:"deferred_#{name}").nil?
         send(
           :"deferred_#{name}=",
-          DeferredAssociation.new(send(:"original_#{name}"), self, name))
+          DeferredAssociation.new(send(:"original_#{name}"), name))
+        listeners.each do |event_name, callback_method|
+          l = DeferredCallbackListener.new(event_name, self, callback_method)
+          send(:"deferred_#{name}").add_listener(l)
+        end
       end
     end
   end
+
+  def create_callback_listeners(options)
+    [:before_link, :before_unlink, :after_link, :after_unlink].map do |event_name|
+      callback_method = options.delete(event_name)
+      [event_name, callback_method] if callback_method
+    end.compact
+  end
+
 end
 
 ActiveRecord::Base.send(:extend, Deferring)
