@@ -14,16 +14,10 @@ module Deferring
       @name = name
       @load_state = :ghost
     end
-
     alias_method :original_association, :__getobj__
 
     delegate :to_s, :to_a, :inspect, :==, # methods undefined by SimpleDelegator
-             :is_a?, :as_json,
-
-             :[], :clear, :reject, :reject!, :flatten, :flatten!, :sort!,
-             :empty?, :size, :length, # methods on Array
-
-             to: :objects
+             :is_a?, :as_json, to: :objects
 
     def each(&block)
       objects.each(&block)
@@ -40,10 +34,26 @@ module Deferring
       end
     end
 
+    # Delegates methods from Ruby's Array module to the object in the deferred
+    # association.
+    delegate :[], :clear, :reject, :reject!, :flatten, :flatten!, :sort!,
+             :sort_by!, :empty?, :size, :length, to: :objects
+
+    # Delegates Ruby's Enumerable#find method to the original association.
+    #
+    # The delegation has to be explicit in this case, because the inclusion of
+    # Enumerable also defines the find-method on DeferredAssociation.
     def find(*args)
       original_association.find(*args)
     end
 
+    # Delegates Ruby's Enumerable#select method to the original association when
+    # no block has been given. Rails' select-method does not accept a block, so
+    # we know that in that case the select-method has to be called on our
+    # deferred association.
+    #
+    # The delegation has to be explicit in this case, because the inclusion of
+    # Enumerable also defines the select-method on DeferredAssociation.
     def select(value = Proc.new)
       if block_given?
         objects.select { |*block_args| value.call(*block_args) }
@@ -57,19 +67,9 @@ module Deferring
       original_association.__send__(:set_inverse_instance, associated_record, parent_record)
     end
 
-    def association
-      load_objects
-      original_association
-    end
-
     def objects
       load_objects
       @objects
-    end
-
-    def original_objects
-      load_objects
-      @original_objects
     end
 
     def objects=(records)
@@ -77,8 +77,8 @@ module Deferring
       @original_objects = original_association.to_a.clone
       objects_loaded!
 
-      pending_deletes.each { |record| run_unlink_callbacks(record) }
-      pending_creates.each { |record| run_link_callbacks(record) }
+      pending_deletes.each { |record| run_deferring_callbacks(:unlink, record) }
+      pending_creates.each { |record| run_deferring_callbacks(:link, record) }
 
       @objects
     end
@@ -91,7 +91,7 @@ module Deferring
       # TODO: Do we want to prevent including the same object twice? Not sure,
       # but it will probably be filtered after saving and retrieving as well.
       Array(records).flatten.uniq.each do |record|
-        run_link_callbacks(record) do
+        run_deferring_callbacks(:link, record) do
           objects << record
         end
       end
@@ -103,7 +103,7 @@ module Deferring
 
     def delete(records)
       Array(records).flatten.uniq.each do |record|
-        run_unlink_callbacks(record) do
+        run_deferring_callbacks(:unlink, record) do
           objects.delete(record)
         end
       end
@@ -113,7 +113,18 @@ module Deferring
     def build(*args, &block)
       association.build(*args, &block).tap do |result|
         objects.push(result)
+
+        # Remove the newly build record from the original association. If we
+        # didn't do this, the new record would be saved to the database when
+        # saving the parent object (and not after, as we want).
         association.reload
+      end
+    end
+
+    def create(*args, &block)
+      association.create(*args, &block).tap do |result|
+        @load_state = :ghost
+        load_objects
       end
     end
 
@@ -133,27 +144,31 @@ module Deferring
 
     # Returns the associated records to which links will be created after saving
     # the parent of the association.
-    def pending_creates
+    def links
       return [] unless objects_loaded?
       objects - original_objects
     end
-    alias_method :links, :pending_creates
+    alias_method :pending_creates, :links
 
     # Returns the associated records to which the links will be deleted after
     # saving the parent of the assocation.
-    def pending_deletes
+    def unlinks
       # TODO: Write test for it.
       return [] unless objects_loaded?
       original_objects - objects
     end
-    alias_method :unlinks, :pending_deletes
+    alias_method :pending_deletes, :unlinks
 
-    # Custom callback stuff
-    def add_listener(listener)
+    def add_callback_listener(listener)
       (@listeners ||= []) << listener
     end
 
     private
+
+    def association
+      load_objects
+      original_association
+    end
 
     def load_objects
       return if objects_loaded?
@@ -171,19 +186,18 @@ module Deferring
       @load_state = :loaded
     end
 
-    def run_unlink_callbacks(record)
-      notify_listeners(:before_unlink, record)
-      yield if block_given?
-      notify_listeners(:after_unlink, record)
+    def original_objects
+      load_objects
+      @original_objects
     end
 
-    def run_link_callbacks(record)
-      notify_listeners(:before_link, record)
+    def run_deferring_callbacks(event_name, record)
+      notify_callback_listeners(:"before_#{event_name}", record)
       yield if block_given?
-      notify_listeners(:after_link, record)
+      notify_callback_listeners(:"after_#{event_name}", record)
     end
 
-    def notify_listeners(event_name, record)
+    def notify_callback_listeners(event_name, record)
       @listeners && @listeners.each do |listener|
         if listener.event_name == event_name
           listener.public_send(event_name, record)

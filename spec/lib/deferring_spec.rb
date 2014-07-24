@@ -274,6 +274,114 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
 
   end
 
+  describe 'callbacks' do
+
+    before(:example) do
+      bob = Person.first
+      bob.teams = [Team.find(3)]
+      bob.save!
+    end
+
+    it 'calls the link callbacks when adding a record using <<' do
+      bob = Person.first
+      bob.teams << Team.find(1)
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before linking team 1',
+        'After linking team 1'
+      ])
+    end
+
+    it 'calls the link callbacks when adding a record using push' do
+      bob = Person.first
+      bob.teams.push(Team.find(1))
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before linking team 1',
+        'After linking team 1'
+      ])
+    end
+
+    it 'calls the link callbacks when adding a record using append' do
+      bob = Person.first
+      bob.teams.append(Team.find(1))
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before linking team 1',
+        'After linking team 1'
+      ])
+    end
+
+    it 'only calls the Rails callbacks when creating a record on the association using create' do
+      bob = Person.first
+      bob.teams.create(name: 'HR')
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before adding new team',
+        'After adding team 4'
+      ])
+    end
+
+    it 'only calls the Rails callbacks when creating a record on the association using create!' do
+      bob = Person.first
+      bob.teams.create!(name: 'HR')
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before adding new team',
+        'After adding team 4'
+      ])
+    end
+
+    it 'calls the unlink callbacks when removing a record using delete' do
+      bob = Person.first
+      bob.teams.delete(Team.find(3))
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before unlinking team 3',
+        'After unlinking team 3'
+      ])
+    end
+
+    it 'only calls the rails callbacks when removing a record using destroy' do
+      bob = Person.first
+      bob.teams.destroy(3)
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before removing team 3',
+        'After removing team 3'
+      ])
+    end
+
+    it 'calls the regular Rails callbacks after saving' do
+      bob = Person.first
+      bob.teams = [Team.find(1), Team.find(3)]
+      bob.save!
+
+      bob = Person.first
+      bob.teams.delete(Team.find(1))
+      bob.teams << Team.find(2)
+      bob.save!
+
+      expect(bob.audit_log.length).to eq(8)
+      expect(bob.audit_log).to eq([
+        'Before unlinking team 1', 'After unlinking team 1',
+        'Before linking team 2', 'After linking team 2',
+        'Before removing team 1',
+        'After removing team 1',
+        'Before adding team 2',
+        'After adding team 2'
+      ])
+    end
+
+  end
+
   describe 'pending creates & deletes (aka links and unlinks)' do
 
     describe 'pending creates' do
@@ -415,47 +523,6 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
       expect(teams.loaded?).to eq(false)
     end
 
-  end
-
-  it 'should call the regular before_add, after_add, before_remove, after_remove callbacks' do
-    bob = Person.first
-    bob.teams = [Team.first, Team.find(3)]
-    bob.save!
-
-    bob = Person.first
-    bob.teams.delete(bob.teams[0])
-    bob.teams << Team.find(2)
-    bob.save!
-
-    expect(bob.audit_log.length).to eq(8)
-    expect(bob.audit_log).to eq([
-      'Before unlinking team 1',
-      'After unlinking team 1',
-      'Before linking team 2',
-      'After linking team 2',
-      'Before removing team 1',
-      'After removing team 1',
-      'Before adding team 2',
-      'After adding team 2'
-    ])
-  end
-
-  it 'should call the link/unlink callbacks' do
-    bob = Person.first
-    bob.teams = [Team.find(3)]
-    bob.save!
-
-    bob = Person.first
-    bob.teams << Team.find(1)
-    bob.teams.delete(bob.teams[0])
-
-    expect(bob.audit_log.length).to eq(4)
-    expect(bob.audit_log).to eq([
-      'Before linking team 1',
-      'After linking team 1',
-      'Before unlinking team 3',
-      'After unlinking team 3',
-    ])
   end
 
   describe 'accepts_nested_attributes' do

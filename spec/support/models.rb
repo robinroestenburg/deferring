@@ -44,7 +44,11 @@ class Person < ActiveRecord::Base
   end
 
   def add_team(team)
-    log("Before adding team #{team.id}")
+    if team.new_record?
+      log("Before adding new team")
+    else
+      log("Before adding team #{team.id}")
+    end
   end
 
   def added_team(team)

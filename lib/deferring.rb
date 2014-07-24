@@ -12,7 +12,7 @@ module Deferring
   # object has been saved.
   def deferred_has_and_belongs_to_many(*args)
     options = args.extract_options!
-    listeners = create_callback_listeners(options)
+    listeners = create_callback_listeners!(options)
 
     has_and_belongs_to_many(*args, options)
     generate_deferred_association_methods(args.first.to_s, listeners)
@@ -24,7 +24,7 @@ module Deferring
   # will defer saving the association until the parent object has been saved.
   def deferred_has_many(*args)
     options = args.extract_options!
-    listeners = create_callback_listeners(options)
+    listeners = create_callback_listeners!(options)
 
     has_many(*args, options)
     generate_deferred_association_methods(args.first.to_s, listeners)
@@ -121,7 +121,7 @@ module Deferring
         DeferredAssociation.new(send(:"original_#{association_name}"), association_name))
       listeners.each do |event_name, callback_method|
         l = DeferredCallbackListener.new(event_name, self, callback_method)
-        send(:"deferred_#{association_name}").add_listener(l)
+        send(:"deferred_#{association_name}").add_callback_listener(l)
       end
     end
 
@@ -134,7 +134,7 @@ module Deferring
           DeferredAssociation.new(send(:"original_#{association_name}"), association_name))
         listeners.each do |event_name, callback_method|
           l = DeferredCallbackListener.new(event_name, self, callback_method)
-          send(:"deferred_#{association_name}").add_listener(l)
+          send(:"deferred_#{association_name}").add_callback_listener(l)
         end
       end
     end
@@ -151,13 +151,13 @@ module Deferring
           DeferredAssociation.new(send(:"original_#{name}"), name))
         listeners.each do |event_name, callback_method|
           l = DeferredCallbackListener.new(event_name, self, callback_method)
-          send(:"deferred_#{name}").add_listener(l)
+          send(:"deferred_#{name}").add_callback_listener(l)
         end
       end
     end
   end
 
-  def create_callback_listeners(options)
+  def create_callback_listeners!(options)
     [:before_link, :before_unlink, :after_link, :after_unlink].map do |event_name|
       callback_method = options.delete(event_name)
       [event_name, callback_method] if callback_method
