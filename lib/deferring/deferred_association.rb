@@ -111,25 +111,27 @@ module Deferring
     end
 
     def build(*args, &block)
-      association.build(*args, &block).tap do |result|
-        objects.push(result)
+      association.build(*args, &block).tap do |record|
+        run_deferring_callbacks(:link, record) do
+          objects.push(record)
 
-        # Remove the newly build record from the original association. If we
-        # didn't do this, the new record would be saved to the database when
-        # saving the parent object (and not after, as we want).
-        association.reload
+          # Remove the newly build record from the original association. If we
+          # didn't do this, the new record would be saved to the database when
+          # saving the parent object (and not after, as we want).
+          association.reload
+        end
       end
     end
 
     def create(*args, &block)
-      association.create(*args, &block).tap do |result|
+      association.create(*args, &block).tap do |_|
         @load_state = :ghost
         load_objects
       end
     end
 
     def create!(*args, &block)
-      association.create!(*args, &block).tap do |result|
+      association.create!(*args, &block).tap do |_|
         @load_state = :ghost
         load_objects
       end
