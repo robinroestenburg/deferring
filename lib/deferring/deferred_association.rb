@@ -7,12 +7,14 @@ module Deferring
     # TODO: Write tests for enumerable.
     include Enumerable
 
-    attr_reader :load_state
+    attr_reader :load_state, :klass, :parent_record, :inverse_name
 
-    def initialize(original_association, name)
+    def initialize(original_association, klass, parent_record, inverse_name)
       super(original_association)
-      @name = name
-      @load_state = :ghost
+      @load_state    = :ghost
+      @klass         = klass
+      @parent_record = parent_record
+      @inverse_name  = inverse_name
     end
     alias_method :original_association, :__getobj__
 
@@ -111,14 +113,13 @@ module Deferring
     end
 
     def build(*args, &block)
-      association.build(*args, &block).tap do |record|
+      klass.new(*args, &block).tap do |record|
         run_deferring_callbacks(:link, record) do
-          objects.push(record)
+          if inverse_name && record.class.reflect_on_association(inverse_name)
+            record.send(:"#{inverse_name}=", parent_record)
+          end
 
-          # Remove the newly build record from the original association. If we
-          # didn't do this, the new record would be saved to the database when
-          # saving the parent object (and not after, as we want).
-          association.reload
+          objects.push(record)
         end
       end
     end

@@ -28,11 +28,19 @@ class Person < ActiveRecord::Base
   end
 
   def link_team(team)
-    log("Before linking team #{team.id}")
+    if team.new_record?
+      log("Before linking new team")
+    else
+      log("Before linking team #{team.id}")
+    end
   end
 
   def linked_team(team)
-    log("After linking team #{team.id}")
+    if team.new_record?
+      log("After linking new team")
+    else
+      log("After linking team #{team.id}")
+    end
   end
 
   def unlink_team(team)
@@ -63,11 +71,11 @@ class Person < ActiveRecord::Base
     log("After removing team #{team.id}")
   end
 
-  def add_issue(issue)
+  def remove_issue(issue)
     log("Before removing issue #{issue.id}")
   end
 
-  def added_issue(issue)
+  def removed_issue(issue)
     log("After removing issue #{issue.id}")
   end
 end

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-RSpec.describe 'deferred has-and-belongs-to-many associations' do
+RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
   before :each do
     Person.create!(name: 'Alice')
@@ -124,6 +124,43 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
 
         expect(dba.people.size).to eq 2
         expect(dba.person_ids).to eq [1,2]
+      end
+    end
+
+    xit 'deferred habtm <=> regular habtm' do
+      alice = Person.where(name: 'Alice').first
+      bob = Person.where(name: 'Bob').first
+
+      team = Team.first
+      team.people << alice << bob
+      team.save!
+
+      bob.reload
+      expect(bob.teams.size).to eq(1)
+
+      alice.reload
+      expect(alice.teams.size).to eq(1)
+
+      team.people.create!(name: 'Chuck')
+      expect(team).to_not be_valid
+
+      bob.reload
+      alice.reload
+
+      expect(bob).to_not be_valid
+      expect(alice).to_not be_valid
+
+      expect(bob.save).to be_falsey
+      expect(alice.save).to be_falsey
+    end
+
+    xit 'does not validate records when validate: false' do
+      pending 'validate: false does not work' do
+        alice = Person.where(name: 'Alice').first
+        alice.teams.build(name: nil)
+        alice.save!
+
+        expect(alice.teams.size).to eq 1
       end
     end
 
@@ -277,13 +314,13 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
   describe 'callbacks' do
 
     before(:example) do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams = [Team.find(3)]
       bob.save!
     end
 
     it 'calls the link callbacks when adding a record using <<' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams << Team.find(1)
 
       expect(bob.audit_log.length).to eq(2)
@@ -294,7 +331,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'calls the link callbacks when adding a record using push' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.push(Team.find(1))
 
       expect(bob.audit_log.length).to eq(2)
@@ -305,7 +342,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'calls the link callbacks when adding a record using append' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.append(Team.find(1))
 
       expect(bob.audit_log.length).to eq(2)
@@ -315,8 +352,19 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
       ])
     end
 
+    it 'calls the link callbacks when adding a record using build' do
+      bob = Person.where(name: 'Bob').first
+      bob.teams.build(name: 'Foooo')
+
+      expect(bob.audit_log.length).to eq(2)
+      expect(bob.audit_log).to eq([
+        'Before linking new team',
+        'After linking new team'
+      ])
+    end
+
     it 'only calls the Rails callbacks when creating a record on the association using create' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.create(name: 'HR')
 
       expect(bob.audit_log.length).to eq(2)
@@ -327,7 +375,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'only calls the Rails callbacks when creating a record on the association using create!' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.create!(name: 'HR')
 
       expect(bob.audit_log.length).to eq(2)
@@ -338,7 +386,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'calls the unlink callbacks when removing a record using delete' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.delete(Team.find(3))
 
       expect(bob.audit_log.length).to eq(2)
@@ -349,7 +397,7 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'only calls the rails callbacks when removing a record using destroy' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.destroy(3)
 
       expect(bob.audit_log.length).to eq(2)
@@ -360,23 +408,24 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     end
 
     it 'calls the regular Rails callbacks after saving' do
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams = [Team.find(1), Team.find(3)]
       bob.save!
 
-      bob = Person.first
+      bob = Person.where(name: 'Bob').first
       bob.teams.delete(Team.find(1))
       bob.teams << Team.find(2)
+      bob.teams.build(name: 'Service Desk')
       bob.save!
 
-      expect(bob.audit_log.length).to eq(8)
+      expect(bob.audit_log.length).to eq(12)
       expect(bob.audit_log).to eq([
         'Before unlinking team 1', 'After unlinking team 1',
-        'Before linking team 2', 'After linking team 2',
-        'Before removing team 1',
-        'After removing team 1',
-        'Before adding team 2',
-        'After adding team 2'
+        'Before linking team 2',   'After linking team 2',
+        'Before linking new team', 'After linking new team',
+        'Before removing team 1',  'After removing team 1',
+        'Before adding team 2',    'After adding team 2',
+        'Before adding new team',  'After adding team 4'
       ])
     end
 
@@ -460,8 +509,6 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
 
   end
 
-  # TODO: Clean up tests.
-
   describe 'active record api' do
 
     # it 'should execute first on deferred association' do
@@ -480,28 +527,33 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
     #   expect(Person.first.teams.last).to eq(operations)
     # end
 
-    it 'should build a new record' do
-      p = Person.first
-      p.teams.build(name: 'Service Desk')
-      expect(p.teams[0]).to be_new_record
+    describe '#build' do
+
+      it 'builds a new record' do
+        p = Person.first
+        p.teams.build(name: 'Service Desk')
+
+        expect(p.teams[0]).to be_new_record
+        expect{ p.save }.to change{ Person.first.teams.count }.from(0).to(1)
+      end
+
     end
 
-    it 'should build and save a new record' do
-      p = Person.first
-      p.teams.build(name: 'Service Desk')
-      expect(p.teams[0]).to be_new_record
-      expect(Person.first.teams.size).to eq(0)
-      p.save
-      expect(Person.first.teams.size).to eq(1)
-    end
+    describe '#create!' do
 
-    it 'should add a new record' do
-      p = Person.first
-      p.teams.create!(:name => 'Service Desk')
-      expect(p.teams[0]).to_not be_new_record
-      expect(Person.first.teams.size).to eq(1)
-      p.save
-      expect(Person.first.teams.size).to eq(1)
+      it 'should create a persisted record' do
+        p = Person.first
+        p.teams.create!(:name => 'Service Desk')
+        expect(p.teams[0]).to_not be_new_record
+      end
+
+      it 'should automatically save the created record' do
+        p = Person.first
+        p.teams.create!(:name => 'Service Desk')
+        expect(Person.first.teams.size).to eq(1)
+        expect{ p.save }.to_not change{ Person.first.teams.count }
+      end
+
     end
 
     it 'should allow ActiveRecord::QueryMethods' do
@@ -523,103 +575,6 @@ RSpec.describe 'deferred has-and-belongs-to-many associations' do
       expect(teams.loaded?).to eq(false)
     end
 
-  end
-
-  describe 'accepts_nested_attributes' do
-    # TODO: Write more tests.
-    it 'should mass assign' do
-      p = Person.first
-      p.teams << Team.first << Team.last << Team.find(2)
-      p.save
-
-      # Destroy team 2 and 3. Keep team 1.
-      p = Person.first
-      p.attributes = {
-        teams_attributes: [
-          { id: 1 },
-          { id: 3, _destroy: true },
-          { id: 2, _destroy: true }
-        ]
-      }
-      expect(p.teams.length).to eq(1)
-      expect(p.team_ids.sort).to eq([1])
-
-      Person.first
-      expect(Person.first.teams.length).to eq(3)
-      expect(Person.first.team_ids.sort).to eq([1,2,3])
-
-      p.save!
-
-      p = Person.first
-      expect(p.teams.length).to eq(1)
-      expect(p.team_ids.sort).to eq([1])
-    end
-
-    it 'should mass assign' do
-      p = Person.first
-      p.teams << Team.first << Team.last << Team.find(2)
-      p.save
-
-      # Destroy team 2 and 3. Keep team 1.
-      p = Person.first
-      p.teams_attributes = [
-        { id: 1 },
-        { id: 3, _destroy: true },
-        { id: 2, _destroy: true }
-      ]
-      expect(p.teams.length).to eq(1)
-      expect(p.team_ids.sort).to eq([1])
-
-      Person.first
-      expect(Person.first.teams.length).to eq(3)
-      expect(Person.first.team_ids.sort).to eq([1,2,3])
-
-      p.save!
-
-      p = Person.first
-      expect(p.teams.length).to eq(1)
-      expect(p.team_ids.sort).to eq([1])
-    end
-  end
-
-  describe 'validations' do
-
-    xit 'deferred habtm <=> regular habtm' do
-      alice = Person.where(name: 'Alice').first
-      bob = Person.where(name: 'Bob').first
-
-      team = Team.first
-      team.people << alice << bob
-      team.save!
-
-      bob.reload
-      expect(bob.teams.size).to eq(1)
-
-      alice.reload
-      expect(alice.teams.size).to eq(1)
-
-      team.people.create!(name: 'Chuck')
-      expect(team).to_not be_valid
-
-      bob.reload
-      alice.reload
-
-      expect(bob).to_not be_valid
-      expect(alice).to_not be_valid
-
-      expect(bob.save).to be_falsey
-      expect(alice.save).to be_falsey
-    end
-
-    xit 'does not validate records when validate: false' do
-      pending 'validate: false does not work' do
-        alice = Person.where(name: 'Alice').first
-        alice.teams.build(name: nil)
-        alice.save!
-
-        expect(alice.teams.size).to eq 1
-      end
-    end
   end
 
 end

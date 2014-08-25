@@ -353,7 +353,7 @@ Person.first.teams
 
 ##### Original association
 
-The original association is renamed to "original_association_name". So, the
+The original association is renamed to `original_association_name`. So, the
 original association of the deferred association named `teams` can be accessed
 by using `original_teams`.
 

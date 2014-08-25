@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-RSpec.describe 'deferred has-many association' do
+RSpec.describe 'deferred has_many associations' do
 
   before(:each) do
     Person.create!(name: 'Alice')
@@ -17,43 +17,62 @@ RSpec.describe 'deferred has-many association' do
 
   describe 'preloading associations' do
     before do
-      p = Person.find(1)
-      p.issues << printer_issue << db_issue
-      p.save!
+      bob = Person.where(name: 'Bob').first
+      bob.issues << printer_issue << db_issue
+      bob.save!
     end
 
     if rails30 # old-style preload
       it 'should have loaded the association' do
-        p = Person.find(1)
-        Person.send(:preload_associations, p, [:issues])
-        expect(p.issues.loaded?).to be_truthy
-        expect(p.issue_ids).to eq [printer_issue.id, db_issue.id]
+        bob = Person.where(name: 'Bob').first
+        Person.send(:preload_associations, bob, [:issues])
+        expect(bob.issues.loaded?).to be_truthy
+        expect(bob.issue_ids).to eq [printer_issue.id, db_issue.id]
       end
     end
 
     if rails32 || rails4
       it 'should have loaded the association when pre-loading' do
         people = Person.preload(:issues)
-        expect(people[0].issues.loaded?).to be_truthy
-        expect(people[0].issue_ids).to eq [printer_issue.id, db_issue.id]
+        expect(people[1].issues.loaded?).to be_truthy
+        expect(people[1].issue_ids).to eq [printer_issue.id, db_issue.id]
       end
 
       it 'should have loaded the association when eager loading' do
         people = Person.eager_load(:issues)
-        expect(people[0].issues.loaded?).to be_truthy
-        expect(people[0].issue_ids).to eq [db_issue.id, printer_issue.id]
+        expect(people[1].issues.loaded?).to be_truthy
+        expect(people[1].issue_ids).to eq [db_issue.id, printer_issue.id]
       end
 
       it 'should have loaded the association when joining' do
         people = Person.includes(:issues).all
-        expect(people[0].issues.loaded?).to be_truthy
-        expect(people[0].issue_ids).to eq [printer_issue.id, db_issue.id]
+        expect(people[1].issues.loaded?).to be_truthy
+        expect(people[1].issue_ids).to eq [printer_issue.id, db_issue.id]
       end
     end
 
     it 'should not have loaded the association when using a regular query' do
       people = Person.all
-      expect(people[0].issues.loaded?).to be_falsey
+      expect(people[1].issues.loaded?).to be_falsey
+    end
+  end
+
+  describe 'active record api' do
+
+    describe '#build' do
+      it 'builds a new record' do
+        bob = Person.where(name: 'Bob').first
+        bob.issues.build(subject: 'I need coffee!')
+
+        expect(bob.issues.last).to be_new_record
+      end
+
+      it 'sets the belongs_to association of the built record' do
+        bob = Person.where(name: 'Bob').first
+        bob.issues.build(subject: 'I need coffee!')
+
+        expect(bob.issues.last.person).to eq bob
+      end
     end
   end
 
