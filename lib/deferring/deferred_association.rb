@@ -18,6 +18,11 @@ module Deferring
     end
     alias_method :original_association, :__getobj__
 
+    def inspect
+      objects.inspect
+    end
+    alias_method :pretty_inspect, :inspect
+
     delegate :to_s, :to_a, :inspect, :==, # methods undefined by SimpleDelegator
              :is_a?, :as_json, to: :objects
 
