@@ -29,8 +29,8 @@ RSpec.describe 'deferred accepts_nested_attributes' do
     p.attributes = {
       teams_attributes: [
         { id: 1 },
-        { id: 3, _destroy: true },
-        { id: 2, _destroy: true }
+        { id: 3, _destroy: '1' },
+        { id: 2, _destroy: '1' }
       ]
     }
     expect(p.teams.length).to eq(1)

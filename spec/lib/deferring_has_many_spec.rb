@@ -101,24 +101,39 @@ RSpec.describe 'deferred has_many associations' do
   end
 
   describe 'accepts_nested_attributes' do
-    it 'should mass-assign' do
+    it 'sets associated records when posting an array of hashes' do
       p = Person.first
       p.issues << printer_issue << db_issue << sandwich_issue
       p.save
 
-      # Destroy db and sandwich issues. Keep printer issue.
+      # Destroy db and sandwich issues. Keep printer issue and create a new one.
       p = Person.first
       p.attributes = {
         issues_attributes: [
           { id: printer_issue.id },
-          { id: sandwich_issue.id, _destroy: true },
-          { id: db_issue.id, _destroy: true }
+          { subject: 'Kapow!' },
+          { id: sandwich_issue.id, _destroy: '1' },
+          { id: db_issue.id, _destroy: '1' }
         ]
       }
-      expect(p.issues.length).to eq(1)
-      expect(p.issue_ids.sort).to eq([1])
+      expect(p.issues.length).to eq(2)
+      expect(p.issue_ids).to eq([printer_issue.id, nil])
 
-      expect{ p.save! }.to change{ Person.first.issues.size }.from(3).to(1)
+      expect{ p.save! }.to change{ Person.first.issues.size }.from(3).to(2)
+    end
+
+    it 'sets associated records when posting a hash of hashes' do
+      p = Person.first
+      p.attributes = {
+        issues_attributes: {
+          first: { subject: 'Kapow!' },
+          second: { id: printer_issue.id }
+        }
+      }
+      expect(p.issues.length).to eq(2)
+      expect(p.issue_ids).to eq([nil, printer_issue.id])
+
+      expect{ p.save! }.to change{ Person.first.issues.size }.from(0).to(2)
     end
 
     it 'sets the belongs_to association of the associated record' do

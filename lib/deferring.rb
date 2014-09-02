@@ -34,20 +34,43 @@ module Deferring
   def deferred_accepts_nested_attributes_for(*args)
     options = args.extract_options!
     inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
+    reject_if_proc = options.delete(:reject_if)
     accepts_nested_attributes_for(*args, options)
 
     association_name = args.first.to_s
 
     # teams_attributes=
-    define_method :"#{association_name}_attributes=" do |records|
+    define_method :"#{association_name}_attributes=" do |attributes|
       find_or_create_deferred_association(association_name, [], inverse_association_name)
 
-      # Remove the records that are to be destroyed from the ids that are to be
-      # assigned to the DeferredAssociation instance.
-      records.reject! { |record| record[:_destroy] }
+      # Convert the attributes to an array if a Hash is passed. This is possible
+      # as the keys of the hash are ignored in this case.
+      #
+      # Example:
+      #   {
+      #     first: { name: 'Service Desk' },
+      #     second: { name: 'DBA' }
+      #   }
+      #   becomes
+      #   [
+      #     { name: 'Service Desk' },
+      #     { name: 'DBA'}
+      #   ]
+      attributes = attributes.values if attributes.is_a? Hash
+
+      # Remove the attributes that are to be destroyed from the ids that are to
+      # be assigned to the DeferredAssociation instance.
+      attributes.reject! { |record| record.delete(:_destroy) == '1' }
+
+      # Remove the attributes that fail the pass :reject_if proc.
+      attributes.reject! { |record| reject_if_proc.call(record) } if reject_if_proc
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
-      objects = klass.find(records.map { |record| record[:id] })
+
+      objects = attributes.map do |record|
+        record[:id] ? klass.find(record[:id]) : klass.new(record)
+      end
+
       send(:"deferred_#{association_name}").objects = objects
     end
 
