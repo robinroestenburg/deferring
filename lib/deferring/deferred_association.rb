@@ -80,11 +80,23 @@ module Deferring
     end
 
     def objects=(records)
-      @objects = records
+      @objects = records.map do |record|
+        if inverse_name && record.class.reflect_on_association(inverse_name)
+          record.send(:"#{inverse_name}=", parent_record)
+        end
+        record
+      end
+
       @original_objects = original_association.to_a.clone
       objects_loaded!
 
-      pending_deletes.each { |record| run_deferring_callbacks(:unlink, record) }
+      pending_deletes.each do |record|
+        run_deferring_callbacks(:unlink, record) do
+          if inverse_name && record.class.reflect_on_association(inverse_name)
+            record.send(:"#{inverse_name}=", nil)
+          end
+        end
+      end
       pending_creates.each { |record| run_deferring_callbacks(:link, record) }
 
       @objects
@@ -99,6 +111,10 @@ module Deferring
       # but it will probably be filtered after saving and retrieving as well.
       Array(records).flatten.uniq.each do |record|
         run_deferring_callbacks(:link, record) do
+          if inverse_name && record.class.reflect_on_association(inverse_name)
+            record.send(:"#{inverse_name}=", parent_record)
+          end
+
           objects << record
         end
       end
@@ -111,6 +127,10 @@ module Deferring
     def delete(records)
       Array(records).flatten.uniq.each do |record|
         run_deferring_callbacks(:unlink, record) do
+          if inverse_name && record.class.reflect_on_association(inverse_name)
+            record.send(:"#{inverse_name}=", nil)
+          end
+
           objects.delete(record)
         end
       end

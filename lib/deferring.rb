@@ -32,12 +32,15 @@ module Deferring
   end
 
   def deferred_accepts_nested_attributes_for(*args)
-    accepts_nested_attributes_for(*args)
+    options = args.extract_options!
+    inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
+    accepts_nested_attributes_for(*args, options)
+
     association_name = args.first.to_s
 
     # teams_attributes=
     define_method :"#{association_name}_attributes=" do |records|
-      find_or_create_deferred_association(association_name, [], nil)
+      find_or_create_deferred_association(association_name, [], inverse_association_name)
 
       # Remove the records that are to be destroyed from the ids that are to be
       # assigned to the DeferredAssociation instance.
@@ -110,7 +113,6 @@ module Deferring
     #  the save after the parent object has been saved
     after_save :"perform_deferred_#{association_name}_save!"
     define_method :"perform_deferred_#{association_name}_save!" do
-
       find_or_create_deferred_association(association_name, listeners, inverse_association_name)
 
       # Send the objects of our delegated association to the original

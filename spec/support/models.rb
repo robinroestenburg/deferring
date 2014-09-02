@@ -15,6 +15,7 @@ class Person < ActiveRecord::Base
 
   deferred_has_many :issues, before_remove: :remove_issue,
                              after_remove: :removed_issue
+  deferred_accepts_nested_attributes_for :issues, allow_destroy: true
 
   validates_presence_of :name
 
