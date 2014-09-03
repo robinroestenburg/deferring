@@ -34,44 +34,85 @@ module Deferring
   def deferred_accepts_nested_attributes_for(*args)
     options = args.extract_options!
     inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
-    reject_if_proc = options.delete(:reject_if)
+    reject_if = options.delete(:reject_if)
     accepts_nested_attributes_for(*args, options)
 
     association_name = args.first.to_s
 
     # teams_attributes=
-    define_method :"#{association_name}_attributes=" do |attributes|
+    define_method :"#{association_name}_attributes=" do |attributes_collection|
       find_or_create_deferred_association(association_name, [], inverse_association_name)
 
-      # Convert the attributes to an array if a Hash is passed. This is possible
-      # as the keys of the hash are ignored in this case.
-      #
-      # Example:
-      #   {
-      #     first: { name: 'Service Desk' },
-      #     second: { name: 'DBA' }
-      #   }
-      #   becomes
-      #   [
-      #     { name: 'Service Desk' },
-      #     { name: 'DBA'}
-      #   ]
-      attributes = attributes.values if attributes.is_a? Hash
-
-      # Remove the attributes that are to be destroyed from the ids that are to
-      # be assigned to the DeferredAssociation instance.
-      attributes.reject! { |record| record.delete(:_destroy) == '1' }
-
-      # Remove the attributes that fail the pass :reject_if proc.
-      attributes.reject! { |record| reject_if_proc.call(record) } if reject_if_proc
-
-      klass = self.class.reflect_on_association(:"#{association_name}").klass
-
-      objects = attributes.map do |record|
-        record[:id] ? klass.find(record[:id]) : klass.new(record)
+      unless attributes_collection.is_a?(Hash) || attributes_collection.is_a?(Array)
+        raise ArgumentError, "Hash or Array expected, got #{attributes_collection.class.name} (#{attributes_collection.inspect})"
       end
 
-      send(:"deferred_#{association_name}").objects = objects
+      # TODO: Implement :limit checks. Check rails source.
+
+      if attributes_collection.is_a? Hash
+        keys = attributes_collection.keys
+        attributes_collection = if keys.include?('id') || keys.include?(:id)
+          [attributes_collection]
+        else
+          attributes_collection.values
+        end
+      end
+
+      attributes_collection.each do |attributes|
+        attributes = attributes.with_indifferent_access
+
+        if attributes['id'].blank?
+          if !reject_new_record?(attributes)
+            send(:"#{association_name}").build(attributes.except(*unassignable_keys))
+          end
+
+        elsif existing_record = send(:"#{association_name}").detect { |record| record.id.to_s == attributes['id'].to_s }
+          if !call_reject_if(attributes)
+
+            existing_record.attributes = attributes.except(*unassignable_keys)
+
+            # TODO: Implement value_to_boolean code from rails for checking _destroy field.
+            if attributes['_destroy'] == '1' && options[:allow_destroy]
+              # remove from existing records
+              send(:"#{association_name}").delete(existing_record)
+            end
+          end
+
+        else # new record referenced by id
+          if !call_reject_if(attributes)
+            klass = self.class.reflect_on_association(:"#{association_name}").klass
+
+            attribute_ids = attributes_collection.map { |a| a['id'] || a[:id] }.compact
+            # TODO: Find out how to get send(:"#{association_name}").scoped.where working
+            new_records = attribute_ids.empty? ? [] : klass.where(klass.primary_key => attribute_ids)
+            new_record = new_records.detect { |record| record.id.to_s == attributes['id'].to_s }
+
+            send(:"#{association_name}").push(new_record)
+          end
+        end
+      end
+    end
+
+    # Determines if a new record should be build by checking for
+    # has_destroy_flag? or if a <tt>:reject_if</tt> proc exists for this
+    # association and evaluates to +true+.
+    define_method :reject_new_record? do |attributes|
+      # TODO: Implement value_to_boolean code from rails for checking _destroy field.
+      attributes['_destroy'] == '1' || call_reject_if(attributes)
+    end
+
+    define_method :call_reject_if do |attributes|
+      return false if attributes['_destroy'] == '1'
+      case callback = reject_if
+      when Symbol
+        method(callback).arity == 0 ? send(callback) : send(callback, attributes)
+      when Proc
+        callback.call(attributes)
+      end
+    end
+
+    define_method :unassignable_keys do
+      %w(_destroy)
     end
 
     generate_find_or_create_deferred_association_method

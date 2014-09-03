@@ -122,6 +122,21 @@ RSpec.describe 'deferred has_many associations' do
       expect{ p.save! }.to change{ Person.first.issues.size }.from(3).to(2)
     end
 
+    it 'updates associated records' do
+      p = Person.first
+      p.issues << printer_issue << db_issue << sandwich_issue
+      p.save
+
+      # Update printer issue.
+      p = Person.first
+      p.attributes = {
+        issues_attributes: [{ id: printer_issue.id, subject: 'Toner low!' }]
+      }
+      p.save!
+
+      expect(Issue.find(printer_issue.id).subject).to eq 'Toner low!'
+    end
+
     it 'sets associated records when posting a hash of hashes' do
       p = Person.first
       p.attributes = {
