@@ -1,7 +1,7 @@
 PATH
   remote: ../
   specs:
-    deferring (0.0.8)
+    deferring (0.0.9)
       activerecord (> 3.0)
 
 GEM
