@@ -113,8 +113,8 @@ module Deferring
       end
     end
 
-    define_method :unassignable_keys do
-      %w(_destroy)
+    define_method :deferred_unassignable_keys do
+      %w(_destroy id)
     end
 
     generate_find_or_create_deferred_association_method
