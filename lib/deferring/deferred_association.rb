@@ -90,13 +90,7 @@ module Deferring
       @original_objects = original_association.to_a.clone
       objects_loaded!
 
-      pending_deletes.each do |record|
-        run_deferring_callbacks(:unlink, record) do
-          if inverse_name && record.class.reflect_on_association(inverse_name)
-            record.send(:"#{inverse_name}=", nil)
-          end
-        end
-      end
+      pending_deletes.each { |record| run_deferring_callbacks(:unlink, record) }
       pending_creates.each { |record| run_deferring_callbacks(:link, record) }
 
       @objects
@@ -126,13 +120,7 @@ module Deferring
 
     def delete(records)
       Array(records).flatten.uniq.each do |record|
-        run_deferring_callbacks(:unlink, record) do
-          if inverse_name && record.class.reflect_on_association(inverse_name)
-            record.send(:"#{inverse_name}=", nil)
-          end
-
-          objects.delete(record)
-        end
+        run_deferring_callbacks(:unlink, record) { objects.delete(record) }
       end
       self
     end

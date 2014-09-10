@@ -103,23 +103,30 @@ RSpec.describe 'deferred has_many associations' do
   describe 'accepts_nested_attributes' do
     it 'sets associated records when posting an array of hashes' do
       p = Person.first
-      p.issues << printer_issue << db_issue << sandwich_issue
-      p.save
-
-      # Destroy db and sandwich issues. Keep printer issue and create a new one.
-      p = Person.first
       p.attributes = {
         issues_attributes: [
           { id: printer_issue.id },
           { subject: 'Kapow!' },
-          { id: sandwich_issue.id, _destroy: '1' },
-          { id: db_issue.id, _destroy: '1' }
         ]
       }
       expect(p.issues.length).to eq(2)
       expect(p.issue_ids).to eq([printer_issue.id, nil])
 
-      expect{ p.save! }.to change{ Person.first.issues.size }.from(3).to(2)
+      expect{ p.save! }.to change{ Person.first.issues.size }.from(0).to(2)
+    end
+
+    it 'sets associated records when posting a hash of hashes' do
+      p = Person.first
+      p.attributes = {
+        issues_attributes: {
+          first: { subject: 'Kapow!' },
+          second: { id: printer_issue.id }
+        }
+      }
+      expect(p.issues.length).to eq(2)
+      expect(p.issue_ids).to eq([nil, printer_issue.id])
+
+      expect{ p.save! }.to change{ Person.first.issues.size }.from(0).to(2)
     end
 
     it 'updates associated records' do
@@ -137,26 +144,54 @@ RSpec.describe 'deferred has_many associations' do
       expect(Issue.find(printer_issue.id).subject).to eq 'Toner low!'
     end
 
-    it 'sets associated records when posting a hash of hashes' do
-      p = Person.first
-      p.attributes = {
-        issues_attributes: {
-          first: { subject: 'Kapow!' },
-          second: { id: printer_issue.id }
-        }
-      }
-      expect(p.issues.length).to eq(2)
-      expect(p.issue_ids).to eq([nil, printer_issue.id])
-
-      expect{ p.save! }.to change{ Person.first.issues.size }.from(0).to(2)
-    end
-
     it 'sets the belongs_to association of the associated record' do
       expect(printer_issue.person).to be_nil
       bob.attributes = {
         issues_attributes: [{ id: printer_issue.id }]
       }
       expect(bob.issues.first.person).to eq bob
+    end
+
+    it 'destroys an associated record when :allow_destroy is true' do
+      p = Person.first
+      p.issues << printer_issue << db_issue << sandwich_issue
+      p.save
+
+      # Destroy db and sandwich issues. Keep printer issue and create a new one.
+      p = Person.first
+      p.attributes = {
+        issues_attributes: [{ id: sandwich_issue.id, _destroy: '1' }]
+      }
+
+      expect(p.issues.length).to eq(2)
+      expect(p.issue_ids).to eq([printer_issue.id, db_issue.id])
+
+      expect(p.issues.unlinks.first).to eq(sandwich_issue)
+
+      expect{ p.save! }.to change{ Issue.count }.from(3).to(2)
+    end
+
+    it 'does not destroy an associated record when :allow_destroy is false' do
+      Person.deferred_accepts_nested_attributes_for :issues, allow_destroy: false
+
+      p = Person.first
+      p.issues << printer_issue << db_issue << sandwich_issue
+      p.save
+
+      # Destroy db and sandwich issues. Keep printer issue and create a new one.
+      p = Person.first
+      p.attributes = {
+        issues_attributes: [{ id: sandwich_issue.id, _destroy: '1' }]
+      }
+
+      expect(p.issues.length).to eq(3)
+      expect(p.issue_ids).to eq([printer_issue.id, db_issue.id, sandwich_issue.id])
+
+      expect(p.issues.unlinks.size).to eq(0)
+
+      expect{ p.save! }.to_not change{ Issue.count }
+
+      Person.deferred_accepts_nested_attributes_for :issues, allow_destroy: true
     end
   end # accepts_nested_attributes
 
