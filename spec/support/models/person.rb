@@ -1,5 +1,3 @@
-# encoding: UTF-8
-
 class Person < ActiveRecord::Base
 
   deferred_has_and_belongs_to_many :teams, before_link: :link_team,
@@ -16,6 +14,11 @@ class Person < ActiveRecord::Base
   deferred_has_many :issues, before_remove: :remove_issue,
                              after_remove: :removed_issue
   deferred_accepts_nested_attributes_for :issues, allow_destroy: true
+
+  deferred_has_many :non_validated_issues, before_remove: :remove_issue,
+                                  after_remove: :removed_issue,
+                                  validate: false
+
 
   validates_presence_of :name
 
@@ -79,21 +82,4 @@ class Person < ActiveRecord::Base
   def removed_issue(issue)
     log("After removing issue #{issue.id}")
   end
-end
-
-class Team < ActiveRecord::Base
-  has_and_belongs_to_many :people
-
-  validates :name, presence: true
-  validate :no_more_than_two_people_per_team
-
-  def no_more_than_two_people_per_team
-    if people.length > 2
-      errors.add(:people, "A maximum of two persons per team is allowed")
-    end
-  end
-end
-
-class Issue < ActiveRecord::Base
-  belongs_to :person
 end

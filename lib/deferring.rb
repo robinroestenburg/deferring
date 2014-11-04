@@ -13,9 +13,15 @@ module Deferring
   def deferred_has_and_belongs_to_many(*args)
     options = args.extract_options!
     listeners = create_callback_listeners!(options)
+    autosave = options.fetch(:autosave, true)
+    validate = options.fetch(:validate, true)
 
     has_and_belongs_to_many(*args, options)
-    generate_deferred_association_methods(args.first.to_s, listeners)
+    generate_deferred_association_methods(
+      args.first.to_s,
+      listeners,
+      autosave: autosave,
+      validate: validate)
   end
 
   # Creates a wrapper around `has_many`. A normal has many association is
@@ -26,9 +32,17 @@ module Deferring
     options = args.extract_options!
     listeners = create_callback_listeners!(options)
     inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
+    autosave = options.fetch(:autosave, true)
+    validate = options.fetch(:validate, true)
 
     has_many(*args, options)
-    generate_deferred_association_methods(args.first.to_s, listeners, inverse_association_name)
+    generate_deferred_association_methods(
+      args.first.to_s,
+      listeners,
+      inverse_association_name: inverse_association_name,
+      autosave: autosave,
+      type: :has_many,
+      validate: validate)
   end
 
   def deferred_accepts_nested_attributes_for(*args)
@@ -122,7 +136,12 @@ module Deferring
 
   private
 
-  def generate_deferred_association_methods(association_name, listeners, inverse_association_name = nil)
+  def generate_deferred_association_methods(association_name, listeners, options = {})
+    inverse_association_name = options[:inverse_association_name]
+    autosave = options.fetch(:autosave, true)
+    type = options.fetch(:type, :habtm)
+    validate = options.fetch(:validate, true)
+
     # Store the original accessor methods of the association.
     alias_method :"original_#{association_name}", :"#{association_name}"
     alias_method :"original_#{association_name}=", :"#{association_name}="
@@ -174,6 +193,40 @@ module Deferring
     # collection_singular_checked=
     define_method(:"#{association_name}_checked=") do |ids|
       send(:"#{association_name.singularize}_ids=", ids.split(','))
+    end
+
+    after_validation :"perform_deferred_#{association_name}_validation!"
+    define_method :"perform_deferred_#{association_name}_validation!" do
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+
+      # Do not perform validations for HABTM associations as they are always
+      # validated by Rails upon saving.
+      return true if type == :habtm
+
+      # Do not perform validation when the association has not been loaded
+      # (performance improvement).
+      return true unless send(:"deferred_#{association_name}").loaded?
+
+      # Do not perform validations when validate: false.
+      return true if validate == false
+
+      all_records_valid = send(:"deferred_#{association_name}").objects.all? do |record|
+        unless valid = record.valid?
+          if autosave
+            record.errors.each do |attribute, message|
+              attribute = "#{association_name}.#{attribute}"
+              errors[attribute] << message
+              errors[attribute].uniq!
+            end
+          else
+            errors.add(association_name)
+          end
+        end
+        valid
+      end
+      return false unless all_records_valid
+
+      true
     end
 
     #  the save after the parent object has been saved

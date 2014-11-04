@@ -1,6 +1,9 @@
 require 'support/active_record'
 require 'deferring'
-require 'support/models'
+require 'support/models/person'
+require 'support/models/team'
+require 'support/models/issue'
+require 'support/models/non_validated_issue'
 require 'support/rails_versions'
 
 RSpec.configure do |config|

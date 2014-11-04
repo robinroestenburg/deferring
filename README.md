@@ -389,12 +389,9 @@ bundle exec appraisal rake
 
 ## TODO
 
-* add support for more Rubies
 * check out what is going on with uniq: true
 * collection(true) (same as reload)
 * collection.replace
-* validations!
-* validate: false does not work
 
 ## Contributing
 

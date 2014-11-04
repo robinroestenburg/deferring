@@ -35,8 +35,6 @@ RSpec.describe 'deferred has_many associations' do
       expect{ bob.save }.to change{ Person.find(bob.id).issues.size }.from(3).to(1)
     end
 
-    xit 'does not create a link when parent is not valid'
-
     it 'replaces existing records when assigning a new set of records' do
       bob.issues = [db_issue]
 
@@ -49,6 +47,104 @@ RSpec.describe 'deferred has_many associations' do
     it 'sets the belongs_to association of the associated record' do
       bob.issues << printer_issue
       expect(bob.issues.first.person).to eq bob
+    end
+
+    describe 'validations' do
+      xit 'does not create a link when parent is not valid'
+
+      context 'with invalid child and validate: true' do
+        it 'returns false when validating' do
+          bob.issues = [Issue.new]
+          expect(bob.valid?).to eq(false)
+        end
+
+        it 'returns false when saving' do
+          bob.issues = [Issue.new]
+          expect(bob.save).to eq(false)
+        end
+
+        it 'does not create a link' do
+          bob.issues = [Issue.new]
+          expect{ bob.save }.to_not change{ Person.find(bob.id).issues.size }
+        end
+      end
+
+      context 'with valid child and validate: true' do
+        it 'returns true when validating' do
+          bob.issues = [Issue.new(subject: 'Valid!')]
+          expect(bob.valid?).to eq(true)
+        end
+
+        it 'validates the child' do
+          bob.issues = [Issue.new]
+          bob.valid?
+          expect(bob.issues.first.validation_log).to eq([
+            'Validating new issue'
+          ])
+        end
+
+        it 'returns true when saving' do
+          bob.issues = [Issue.new(subject: 'Valid!')]
+          expect(bob.save).to eq(true)
+        end
+
+        it 'creates a link' do
+          bob.issues = [Issue.new(subject: 'Valid!')]
+          expect{ bob.save }.to change{ Person.find(bob.id).issues.size }.from(0).to(1)
+        end
+      end
+
+      context 'with invalid child and validate: false' do
+        it 'returns true when validating' do
+          bob.non_validated_issues = [NonValidatedIssue.new]
+          expect(bob.valid?).to eq(true)
+        end
+
+        it 'does not validate the child' do
+          bob.non_validated_issues = [NonValidatedIssue.new]
+          bob.valid?
+          expect(bob.non_validated_issues.first.validation_log).to eq([])
+        end
+
+        unless rails30 # rails 3.0 does not return a error
+          it 'fails when trying to save the parent' do
+            bob.non_validated_issues = [NonValidatedIssue.new]
+
+            # Rails will raise the following error:
+            # - ActiveRecord::RecordNotSaved:
+            #     Failed to replace non_validated_issues because one or more of the new records could not be saved.
+            #
+            # This behaviour is different from the default Rails behaviour.
+            # Rails will normally just save the parent and not save the
+            # association.
+            #
+            # Two ways to avoid this error (using the Deferring gem):
+            # - always use validate: true when user input is involved (e.g.
+            #   using nested attributes to update the association),
+            # - add validations to the parent to check validness of the
+            #   children when a child record can be valid on itself but invalid
+            #   when added to the parent
+            expect{ bob.save }.to raise_error
+          end
+        end
+      end
+
+      context 'with valid child and validate: false' do
+        it 'returns true when validating' do
+          bob.non_validated_issues = [NonValidatedIssue.new(subject: 'Valid!')]
+          expect(bob.valid?).to eq(true)
+        end
+
+        it 'returns true when saving' do
+          bob.non_validated_issues = [NonValidatedIssue.new(subject: 'Valid!')]
+          expect(bob.save).to eq(true)
+        end
+
+        it 'creates a link' do
+          bob.non_validated_issues = [NonValidatedIssue.new(subject: 'Valid!')]
+          expect{ bob.save }.to change{ Person.find(bob.id).non_validated_issues.size }.from(0).to(1)
+        end
+      end
     end
 
     describe '#collection_singular_ids' do

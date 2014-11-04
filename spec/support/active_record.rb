@@ -24,5 +24,11 @@ ActiveRecord::Schema.define version: 0 do
     t.integer :person_id
     t.timestamps
   end
+
+  create_table :non_validated_issues do |t|
+    t.string :subject
+    t.integer :person_id
+    t.timestamps
+  end
 end
 ActiveRecord::Base.logger = Logger.new(File.dirname(__FILE__) + '/debug.log')
