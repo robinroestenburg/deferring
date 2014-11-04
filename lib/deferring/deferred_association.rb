@@ -44,7 +44,8 @@ module Deferring
     # Delegates methods from Ruby's Array module to the object in the deferred
     # association.
     delegate :[]=, :[], :clear, :select!, :reject!, :flatten, :flatten!, :sort!,
-             :sort_by!, :empty?, :size, :length, to: :objects
+             :keep_if, :delete_if, :sort_by!, :empty?, :size, :length,
+             to: :objects
 
     # Delegates Ruby's Enumerable#find method to the original association.
     #
