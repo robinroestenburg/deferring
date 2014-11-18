@@ -101,14 +101,65 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(0).to(1)
       end
 
-      describe '#collection_checked=' do
+      it 'unlinks all records when assigning empty array' do
+        bob.team_ids = [dba.id, operations.id]
+        bob.save
 
-        it 'set associated records' do
-          bob.teams_checked = [dba.id, operations.id]
+        bob.team_ids = []
+        expect(bob.teams.length).to eq(0)
 
-          expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(0).to(2)
-        end
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
+      end
 
+      it 'unlinks all records when assigning nil' do
+        bob.team_ids = [dba.id, operations.id]
+        bob.save
+
+        bob.team_ids = nil
+        expect(bob.teams.length).to eq(0)
+
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
+      end
+    end
+
+    describe '#collection_checked=' do
+
+      it 'set associated records' do
+        bob.teams_checked = "#{dba.id},#{operations.id}"
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(0).to(2)
+      end
+
+      it 'replace existing records when assigning a new set of ids of records' do
+        bob.team_ids = [dba.id, operations.id]
+        bob.save
+
+        # Replace DBA and Operations by Support.
+        bob.teams_checked = "#{support.id}"
+
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(1)
+        expect(bob.teams.first).to eq(support)
+      end
+
+      it 'unlinks all records when assigning empty string' do
+        bob.team_ids = [dba.id, operations.id]
+        bob.save
+
+        # Unlinks DBA and Operations.
+        bob.teams_checked = ""
+        expect(bob.teams.length).to eq(0)
+
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
+      end
+
+      it 'unlinks all records when assigning nil' do
+        bob.team_ids = [dba.id, operations.id]
+        bob.save
+
+        # Unlinks DBA and Operations.
+        bob.teams_checked = nil
+        expect(bob.teams.length).to eq(0)
+
+        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
       end
 
     end

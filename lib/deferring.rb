@@ -175,8 +175,10 @@ module Deferring
     define_method :"#{association_name.singularize}_ids=" do |ids|
       find_or_create_deferred_association(association_name, listeners, inverse_association_name)
 
+      ids ||= []
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       objects = klass.find(ids.reject(&:blank?))
+
       send(:"deferred_#{association_name}").objects = objects
     end
 
@@ -192,6 +194,7 @@ module Deferring
     attr_accessor :"#{association_name}_checked"
     # collection_singular_checked=
     define_method(:"#{association_name}_checked=") do |ids|
+      ids ||= ''
       send(:"#{association_name.singularize}_ids=", ids.split(','))
     end
 
