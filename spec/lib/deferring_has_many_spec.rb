@@ -321,7 +321,7 @@ RSpec.describe 'deferred has_many associations' do
       end
 
       it 'should have loaded the association when joining' do
-        people = Person.includes(:issues).all
+        people = Person.includes(:issues).to_a
         expect(people[1].issues.loaded?).to be_truthy
         expect(people[1].issue_ids).to eq [printer_issue.id, db_issue.id]
       end
