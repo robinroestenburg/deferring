@@ -31,7 +31,7 @@ module Deferring
   def deferred_has_many(*args)
     options = args.extract_options!
     listeners = create_callback_listeners!(options)
-    inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
+    inverse_association_name = options[:as] || options[:inverse_of] || self.name.underscore.to_sym
     autosave = options.fetch(:autosave, true)
     validate = options.fetch(:validate, true)
 
