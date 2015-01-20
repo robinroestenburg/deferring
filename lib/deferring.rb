@@ -242,24 +242,24 @@ module Deferring
       send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
 
       # Store the new value of the association into our delegated association.
-      save_deferred_association(association_name, listeners, inverse_association_name)
+      update_deferred_association(association_name, listeners, inverse_association_name)
     end
 
     define_method :"reload_with_deferred_#{association_name}" do |*args|
       find_or_create_deferred_association(association_name, listeners, inverse_association_name)
 
       send(:"reload_without_deferred_#{association_name}", *args).tap do
-        save_deferred_association(association_name, listeners, inverse_association_name)
+        update_deferred_association(association_name, listeners, inverse_association_name)
       end
     end
     alias_method_chain :reload, :"deferred_#{association_name}"
 
-    generate_save_deferred_assocation_method
+    generate_update_deferred_assocation_method
     generate_find_or_create_deferred_association_method
   end
 
-  def generate_save_deferred_assocation_method
-    define_method :save_deferred_association do |name, listeners, inverse_association_name|
+  def generate_update_deferred_assocation_method
+    define_method :update_deferred_association do |name, listeners, inverse_association_name|
       klass = self.class.reflect_on_association(:"#{name}").klass
       send(
         :"deferred_#{name}=",
@@ -274,7 +274,7 @@ module Deferring
   def generate_find_or_create_deferred_association_method
     define_method :find_or_create_deferred_association do |name, listeners, inverse_association_name|
       if send(:"deferred_#{name}").nil?
-        save_deferred_association(name, listeners, inverse_association_name)
+        update_deferred_association(name, listeners, inverse_association_name)
       end
     end
   end
