@@ -213,8 +213,9 @@ module Deferring
       # Do not perform validations when validate: false.
       return true if validate == false
 
-      all_records_valid = send(:"deferred_#{association_name}").objects.all? do |record|
-        unless valid = record.valid?
+      all_records_valid = send(:"deferred_#{association_name}").objects.inject(true) do |valid, record|
+        unless record.valid?
+          valid = false
           if autosave
             record.errors.each do |attribute, message|
               attribute = "#{association_name}.#{attribute}"
@@ -227,9 +228,9 @@ module Deferring
         end
         valid
       end
-      return false unless all_records_valid
+      return true if all_records_valid
 
-      true
+      false
     end
 
     #  the save after the parent object has been saved
