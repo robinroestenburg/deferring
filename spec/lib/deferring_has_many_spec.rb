@@ -350,4 +350,41 @@ RSpec.describe 'deferred has_many associations' do
       end
     end
   end # active record api
+
+  describe 'polymorphic association' do
+    it 'sets the parent on the associated record before saving' do
+      bob = Person.where(name: 'Bob').first
+      bob.addresses << Address.new(street: '221B Baker St.')
+
+      address = bob.addresses[0]
+      expect(address.addressable).to eq(bob)
+      expect(address.addressable_id).to eq(bob.id)
+      expect(address.addressable_type).to eq('Person')
+    end
+
+    it 'adds the associated record' do
+      bob = Person.where(name: 'Bob').first
+      bob.addresses << Address.new(street: '221B Baker St.')
+      bob.save!
+
+      bob.reload
+      address = bob.addresses[0]
+      expect(address.street).to eq('221B Baker St.')
+    end
+
+    context 'when using nested attributes' do
+      it 'sets the parent on the associated record before saving' do
+        bob = Person.where(name: 'Bob').first
+        bob.attributes = {
+          addresses_attributes: [{ street: '221B Baker St.' }]
+        }
+
+        address = bob.addresses[0]
+        expect(address.addressable).to eq(bob)
+        expect(address.addressable_id).to eq(bob.id)
+        expect(address.addressable_type).to eq('Person')
+        expect(address.street).to eq('221B Baker St.')
+      end
+    end
+  end
 end

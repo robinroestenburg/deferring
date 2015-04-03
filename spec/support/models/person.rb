@@ -19,6 +19,11 @@ class Person < ActiveRecord::Base
                                   after_remove: :removed_issue,
                                   validate: false
 
+  # Polymorphic has-many association
+  deferred_has_many :addresses, as: :addressable,
+                                autosave: true,
+                                dependent: :delete_all
+  deferred_accepts_nested_attributes_for :addresses, allow_destroy: true
 
   validates_presence_of :name
 

@@ -25,6 +25,13 @@ ActiveRecord::Schema.define version: 0 do
     t.timestamps
   end
 
+  create_table :addresses do |t|
+    t.integer :addressable_id
+    t.string :addressable_type
+    t.string :street
+    t.timestamps
+  end
+
   create_table :non_validated_issues do |t|
     t.string :subject
     t.integer :person_id

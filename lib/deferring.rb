@@ -47,7 +47,6 @@ module Deferring
 
   def deferred_accepts_nested_attributes_for(*args)
     options = args.extract_options!
-    inverse_association_name = options.fetch(:as, self.name.underscore.to_sym)
     reject_if = options.delete(:reject_if)
     accepts_nested_attributes_for(*args, options)
 
@@ -55,8 +54,6 @@ module Deferring
 
     # teams_attributes=
     define_method :"#{association_name}_attributes=" do |attributes_collection|
-      find_or_create_deferred_association(association_name, [], inverse_association_name)
-
       unless attributes_collection.is_a?(Hash) || attributes_collection.is_a?(Array)
         raise ArgumentError, "Hash or Array expected, got #{attributes_collection.class.name} (#{attributes_collection.inspect})"
       end
