@@ -78,7 +78,7 @@ module Deferring
           end
 
         elsif existing_record = send(:"#{association_name}").detect { |record| record.id.to_s == attributes['id'].to_s }
-          if !deferred_call_reject_if(attributes)
+          if !send(:"deferred_#{association_name}_call_reject_if", attributes)
 
             existing_record.attributes = attributes.except(*deferred_unassignable_keys)
 
@@ -92,7 +92,7 @@ module Deferring
           end
 
         else # new record referenced by id
-          if !deferred_call_reject_if(attributes)
+          if !send(:"deferred_#{association_name}_call_reject_if", attributes)
             klass = self.class.reflect_on_association(:"#{association_name}").klass
 
             attribute_ids = attributes_collection.map { |a| a['id'] || a[:id] }.compact
