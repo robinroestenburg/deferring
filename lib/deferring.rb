@@ -73,7 +73,7 @@ module Deferring
         attributes = attributes.with_indifferent_access
 
         if attributes['id'].blank?
-          if !deferred_reject_new_record?(attributes)
+          if !send(:"deferred_#{association_name}_reject_new_record?", attributes)
             send(:"#{association_name}").build(attributes.except(*deferred_unassignable_keys))
           end
 
@@ -109,12 +109,12 @@ module Deferring
     # Determines if a new record should be build by checking for
     # has_destroy_flag? or if a <tt>:reject_if</tt> proc exists for this
     # association and evaluates to +true+.
-    define_method :deferred_reject_new_record? do |attributes|
+    define_method :"deferred_#{association_name}_reject_new_record?" do |attributes|
       # TODO: Implement value_to_boolean code from rails for checking _destroy field.
-      attributes['_destroy'] == '1' || deferred_call_reject_if(attributes)
+      attributes['_destroy'] == '1' || send(:"deferred_#{association_name}_call_reject_if", attributes)
     end
 
-    define_method :deferred_call_reject_if do |attributes|
+    define_method :"deferred_#{association_name}_call_reject_if" do |attributes|
       return false if attributes['_destroy'] == '1'
       case callback = reject_if
       when Symbol
