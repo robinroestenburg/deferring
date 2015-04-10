@@ -21,6 +21,7 @@ module Deferring
       args.first.to_s,
       listeners,
       autosave: autosave,
+      type: :habtm,
       validate: validate)
   end
 
@@ -42,6 +43,7 @@ module Deferring
       inverse_association_name: inverse_association_name,
       autosave: autosave,
       type: :has_many,
+      dependent: options[:dependent],
       validate: validate)
   end
 
@@ -136,8 +138,9 @@ module Deferring
   def generate_deferred_association_methods(association_name, listeners, options = {})
     inverse_association_name = options[:inverse_association_name]
     autosave = options.fetch(:autosave, true)
-    type = options.fetch(:type, :habtm)
+    type = options.fetch(:type)
     validate = options.fetch(:validate, true)
+    dependent = options[:dependent]
 
     # Store the original accessor methods of the association.
     alias_method :"original_#{association_name}", :"#{association_name}"
@@ -152,7 +155,7 @@ module Deferring
     # if none are found.
     # TODO: add force_reload argument?
     define_method :"#{association_name}" do
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
       send(:"deferred_#{association_name}")
     end
 
@@ -161,7 +164,7 @@ module Deferring
     # Replaces the collection's content by deleting and adding objects as
     # appropriate.
     define_method :"#{association_name}=" do |objects|
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
       send(:"deferred_#{association_name}").objects = objects
     end
 
@@ -170,7 +173,7 @@ module Deferring
     # Replace the collection by the objects identified by the primary keys in
     # ids.
     define_method :"#{association_name.singularize}_ids=" do |ids|
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
 
       ids ||= []
       klass = self.class.reflect_on_association(:"#{association_name}").klass
@@ -183,7 +186,7 @@ module Deferring
     #
     # Returns an array of the associated objects' ids.
     define_method :"#{association_name.singularize}_ids" do
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
       send(:"deferred_#{association_name}").ids
     end
 
@@ -197,7 +200,7 @@ module Deferring
 
     after_validation :"perform_deferred_#{association_name}_validation!"
     define_method :"perform_deferred_#{association_name}_validation!" do
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
 
       # Do not perform validations for HABTM associations as they are always
       # validated by Rails upon saving.
@@ -233,21 +236,21 @@ module Deferring
     #  the save after the parent object has been saved
     after_save :"perform_deferred_#{association_name}_save!"
     define_method :"perform_deferred_#{association_name}_save!" do
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
 
       # Send the objects of our delegated association to the original
       # association and store the result.
       send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
 
       # Store the new value of the association into our delegated association.
-      update_deferred_association(association_name, listeners, inverse_association_name)
+      update_deferred_association(association_name, listeners, inverse_association_name, dependent)
     end
 
     define_method :"reload_with_deferred_#{association_name}" do |*args|
-      find_or_create_deferred_association(association_name, listeners, inverse_association_name)
+      find_or_create_deferred_association(association_name, listeners, inverse_association_name, dependent)
 
       send(:"reload_without_deferred_#{association_name}", *args).tap do
-        update_deferred_association(association_name, listeners, inverse_association_name)
+        update_deferred_association(association_name, listeners, inverse_association_name, dependent)
       end
     end
     alias_method_chain :reload, :"deferred_#{association_name}"
@@ -257,11 +260,11 @@ module Deferring
   end
 
   def generate_update_deferred_assocation_method
-    define_method :update_deferred_association do |name, listeners, inverse_association_name|
+    define_method :update_deferred_association do |name, listeners, inverse_association_name, dependent|
       klass = self.class.reflect_on_association(:"#{name}").klass
       send(
         :"deferred_#{name}=",
-        DeferredAssociation.new(send(:"original_#{name}"), klass, self, inverse_association_name))
+        DeferredAssociation.new(send(:"original_#{name}"), klass, self, inverse_association_name, dependent))
       listeners.each do |event_name, callback_method|
         l = DeferredCallbackListener.new(event_name, self, callback_method)
         send(:"deferred_#{name}").add_callback_listener(l)
@@ -270,9 +273,9 @@ module Deferring
   end
 
   def generate_find_or_create_deferred_association_method
-    define_method :find_or_create_deferred_association do |name, listeners, inverse_association_name|
+    define_method :find_or_create_deferred_association do |name, listeners, inverse_association_name, dependent|
       if send(:"deferred_#{name}").nil?
-        update_deferred_association(name, listeners, inverse_association_name)
+        update_deferred_association(name, listeners, inverse_association_name, dependent)
       end
     end
   end

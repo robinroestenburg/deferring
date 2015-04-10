@@ -7,14 +7,19 @@ module Deferring
     # TODO: Write tests for enumerable.
     include Enumerable
 
-    attr_reader :load_state, :klass, :parent_record, :inverse_name
+    attr_reader :load_state,
+                :klass,
+                :parent_record,
+                :inverse_name,
+                :dependent
 
-    def initialize(original_association, klass, parent_record, inverse_name)
+    def initialize(original_association, klass, parent_record, inverse_name, dependent)
       super(original_association)
       @load_state    = :ghost
       @klass         = klass
       @parent_record = parent_record
       @inverse_name  = inverse_name
+      @dependent     = dependent
     end
     alias_method :original_association, :__getobj__
 
@@ -101,10 +106,10 @@ module Deferring
       objects.map(&:id)
     end
 
-    def <<(records)
+    def <<(*records)
       # TODO: Do we want to prevent including the same object twice? Not sure,
       # but it will probably be filtered after saving and retrieving as well.
-      Array(records).flatten.uniq.each do |record|
+      records.flatten.uniq.each do |record|
         run_deferring_callbacks(:link, record) do
           if inverse_name && record.class.reflect_on_association(inverse_name)
             record.send(:"#{inverse_name}=", parent_record)
@@ -119,11 +124,23 @@ module Deferring
     alias_method :concat, :<<
     alias_method :append, :<<
 
-    def delete(records)
-      Array(records).flatten.uniq.each do |record|
+    def delete(*records)
+      records.flatten.uniq.each do |record|
         run_deferring_callbacks(:unlink, record) { objects.delete(record) }
       end
       self
+    end
+
+    def destroy(*records)
+      records.flatten.uniq.each do |record|
+        record = record.to_i if record.is_a? String
+        record = objects.detect { |o| o.id == record } if record.is_a? Fixnum
+
+        run_deferring_callbacks(:unlink, record) {
+          objects.delete(record)
+          record.mark_for_destruction if dependent && [:destroy, :delete_all].include?(dependent)
+        }
+      end
     end
 
     def build(*args, &block)

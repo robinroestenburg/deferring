@@ -447,14 +447,14 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       ])
     end
 
-    it 'only calls the rails callbacks when removing a record using destroy' do
+    it 'calls the unlink callbacks when removing a record using destroy' do
       bob = Person.where(name: 'Bob').first
-      bob.teams.destroy(3)
+      bob.teams.destroy(Team.find(3))
 
       expect(bob.audit_log.length).to eq(2)
       expect(bob.audit_log).to eq([
-        'Before removing team 3',
-        'After removing team 3'
+        'Before unlinking team 3',
+        'After unlinking team 3'
       ])
     end
 
@@ -467,14 +467,19 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       bob.teams.delete(Team.find(1))
       bob.teams << Team.find(2)
       bob.teams.build(name: 'Service Desk')
+      bob.teams.destroy(Team.find(3))
       bob.save!
 
-      expect(bob.audit_log.length).to eq(12)
+      expect(bob.audit_log.length).to eq(16)
       expect(bob.audit_log).to eq([
         'Before unlinking team 1', 'After unlinking team 1',
         'Before linking team 2',   'After linking team 2',
         'Before linking new team', 'After linking new team',
-        'Before removing team 1',  'After removing team 1',
+        'Before unlinking team 3', 'After unlinking team 3',
+        'Before removing team 3',
+        'Before removing team 1',
+        'After removing team 3',
+        'After removing team 1',
         'Before adding team 2',    'After adding team 2',
         'Before adding new team',  'After adding team 4'
       ])
@@ -605,6 +610,96 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect{ p.save }.to_not change{ Person.first.teams.count }
       end
 
+    end
+
+    describe '#destroy' do
+      context 'when called on has_many association with dependent: :delete_all' do
+        it 'destroys the records supplied and removes them from the collection' do
+          printer = Issue.create!(subject: 'Printer PRT-001 jammed')
+          database = Issue.create!(subject: 'Database server DB-1337 down')
+          sandwich = Issue.create!(subject: 'Make me a sandwich!')
+
+          bob.issues << printer << database << sandwich
+          bob.save!
+
+          expect {
+            bob.issues.destroy(printer)
+            bob.save!
+          }.to change {
+            Person.find(bob.id).issues.size
+          }.from(3).to(2)
+          expect { Issue.find(printer.id) }.to raise_error(ActiveRecord::RecordNotFound)
+        end
+      end
+
+      context 'when called on has_many association without dependent: :delete_all' do
+        it 'removes the records supplied from the collection' do
+          printer = Issue.create!(subject: 'Printer PRT-001 jammed')
+          database = Issue.create!(subject: 'Database server DB-1337 down')
+          sandwich = Issue.create!(subject: 'Make me a sandwich!')
+
+          bob.other_issues << printer << database << sandwich
+          bob.save!
+
+          expect {
+            bob.other_issues.destroy(printer)
+            bob.save!
+          }.to change {
+            Person.find(bob.id).other_issues.size
+          }.from(3).to(2)
+          expect(Issue.find(printer.id)).to eq(printer)
+        end
+      end
+
+      context 'when called on has_and_belongs_to_many association' do
+        it 'removes the records supplied from the collection' do
+          bob.teams << dba << operations
+          bob.save!
+
+          expect {
+            bob.teams.destroy(dba)
+            bob.save!
+          }.to change {
+            Person.find(bob.id).teams.size
+          }.from(2).to(1)
+          expect(Team.find(dba.id)).to eq(dba)
+        end
+      end
+
+      it 'returns an array with the removed records' do
+        printer = Issue.create!(subject: 'Printer PRT-001 jammed')
+        database = Issue.create!(subject: 'Database server DB-1337 down')
+        sandwich = Issue.create!(subject: 'Make me a sandwich!')
+
+        bob.issues << printer << database << sandwich
+        bob.save!
+
+        expect(bob.issues.destroy(database)).to eq([database])
+      end
+
+      it 'accepts Fixnum values' do
+        bob.teams << dba << operations
+        bob.save!
+
+        expect {
+          bob.teams.destroy(dba.id)
+          bob.save!
+        }.to change {
+          Person.find(bob.id).teams.size
+        }.from(2).to(1)
+      end
+
+      it 'accepts String values' do
+        bob.teams << dba << operations
+        bob.save!
+
+        expect {
+          bob.teams.destroy("#{dba.id}", "#{operations.id}")
+          bob.save!
+        }.to change {
+          Person.find(bob.id).teams.size
+        }.from(2).to(0)
+      end
     end
 
     it 'should allow ActiveRecord::QueryMethods' do

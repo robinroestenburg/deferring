@@ -12,8 +12,15 @@ class Person < ActiveRecord::Base
   deferred_accepts_nested_attributes_for :teams, allow_destroy: true
 
   deferred_has_many :issues, before_remove: :remove_issue,
-                             after_remove: :removed_issue
+                             after_remove: :removed_issue,
+                             dependent: :delete_all
   deferred_accepts_nested_attributes_for :issues, allow_destroy: true
+
+  # has_many without dependent: :delete_all, calling destroy on this association
+  # will not destroy the the Issue record
+  deferred_has_many :other_issues, before_remove: :remove_issue,
+                                   after_remove: :removed_issue,
+                                   class_name: 'Issue'
 
   deferred_has_many :non_validated_issues, before_remove: :remove_issue,
                                   after_remove: :removed_issue,
