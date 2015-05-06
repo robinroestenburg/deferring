@@ -86,7 +86,7 @@ module Deferring
     end
 
     def objects=(records)
-      @objects = records.map do |record|
+      @objects = records.compact.map do |record|
         if inverse_name && record.class.reflect_on_association(inverse_name)
           record.send(:"#{inverse_name}=", parent_record)
         end
@@ -109,7 +109,7 @@ module Deferring
     def <<(*records)
       # TODO: Do we want to prevent including the same object twice? Not sure,
       # but it will probably be filtered after saving and retrieving as well.
-      records.flatten.uniq.each do |record|
+      records.flatten.compact.uniq.each do |record|
         run_deferring_callbacks(:link, record) do
           if inverse_name && record.class.reflect_on_association(inverse_name)
             record.send(:"#{inverse_name}=", parent_record)
@@ -125,14 +125,14 @@ module Deferring
     alias_method :append, :<<
 
     def delete(*records)
-      records.flatten.uniq.each do |record|
+      records.flatten.compact.uniq.each do |record|
         run_deferring_callbacks(:unlink, record) { objects.delete(record) }
       end
       self
     end
 
     def destroy(*records)
-      records.flatten.uniq.each do |record|
+      records.flatten.compact.uniq.each do |record|
         record = record.to_i if record.is_a? String
         record = objects.detect { |o| o.id == record } if record.is_a? Fixnum
 

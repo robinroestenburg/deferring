@@ -49,6 +49,20 @@ RSpec.describe 'deferred has_many associations' do
       expect(bob.issues.first.person).to eq bob
     end
 
+    it 'drops nil records' do
+      bob.issues << nil
+      expect(bob.issues).to be_empty
+
+      bob.issues = [nil]
+      expect(bob.issues).to be_empty
+
+      bob.issues.delete(nil)
+      expect(bob.issues).to be_empty
+
+      bob.issues.destroy(nil)
+      expect(bob.issues).to be_empty
+    end
+
     describe 'validations' do
       xit 'does not create a link when parent is not valid'
 

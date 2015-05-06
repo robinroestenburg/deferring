@@ -54,6 +54,20 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       expect{ bob.save }.to change{ Person.find(bob.id).teams.size }.from(0).to(2)
     end
 
+    it 'drops nil records' do
+      bob.teams << nil
+      expect(bob.teams).to be_empty
+
+      bob.teams = [nil]
+      expect(bob.teams).to be_empty
+
+      bob.teams.delete(nil)
+      expect(bob.teams).to be_empty
+
+      bob.teams.destroy(nil)
+      expect(bob.teams).to be_empty
+    end
+
     describe '#collection_singular_ids' do
 
       it 'returns ids of saved & unsaved associated records' do
