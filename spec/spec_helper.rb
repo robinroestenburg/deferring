@@ -5,7 +5,6 @@ require 'support/models/team'
 require 'support/models/issue'
 require 'support/models/address'
 require 'support/models/non_validated_issue'
-require 'support/rails_versions'
 
 RSpec.configure do |config|
   config.disable_monkey_patching!

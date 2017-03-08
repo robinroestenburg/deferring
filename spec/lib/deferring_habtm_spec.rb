@@ -238,33 +238,22 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       bob.save!
     end
 
-    if rails30 # old-style preload
-      it 'loads the association' do
-        person = Person.where(name: 'Bob').first
-        Person.send(:preload_associations, person, [:teams])
-        expect(person.teams.loaded?).to be_truthy
-        expect(person.team_ids).to eq [dba.id, support.id]
-      end
+    it 'loads the association when pre-loading' do
+      person = Person.preload(:teams).where(name: 'Bob').first
+      expect(person.teams.loaded?).to be_truthy
+      expect(person.team_ids).to eq [dba.id, support.id]
     end
 
-    if rails32 || rails4
-      it 'loads the association when pre-loading' do
-        person = Person.preload(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_truthy
-        expect(person.team_ids).to eq [dba.id, support.id]
-      end
+    it 'loads the association when eager loading' do
+      person = Person.eager_load(:teams).where(name: 'Bob').first
+      expect(person.teams.loaded?).to be_truthy
+      expect(person.team_ids).to eq [dba.id, support.id]
+    end
 
-      it 'loads the association when eager loading' do
-        person = Person.eager_load(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_truthy
-        expect(person.team_ids).to eq [dba.id, support.id]
-      end
-
-      it 'loads the association when joining' do
-        person = Person.includes(:teams).where(name: 'Bob').first
-        expect(person.teams.loaded?).to be_truthy
-        expect(person.team_ids).to eq [dba.id, support.id]
-      end
+    it 'loads the association when joining' do
+      person = Person.includes(:teams).where(name: 'Bob').first
+      expect(person.teams.loaded?).to be_truthy
+      expect(person.team_ids).to eq [dba.id, support.id]
     end
 
     it 'does not load the association when using a regular query' do
