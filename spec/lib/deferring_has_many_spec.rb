@@ -138,7 +138,7 @@ RSpec.describe 'deferred has_many associations' do
             # - add validations to the parent to check validness of the
             #   children when a child record can be valid on itself but invalid
             #   when added to the parent
-            expect{ bob.save }.to raise_error
+            expect{ bob.save }.to raise_error(ActiveRecord::RecordNotSaved)
           end
         end
       end

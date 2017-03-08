@@ -6,16 +6,23 @@ rvm:
   - 2.4.0
   - ruby-head
 
-sudo: false
-
-matrix:
-  allow_failures:
-    - rvm: ruby-head
-
 gemfile:
   - gemfiles/rails_40.gemfile
   - gemfiles/rails_41.gemfile
   - gemfiles/rails_42.gemfile
   - gemfiles/rails_50.gemfile
+
+sudo: false
+
+matrix:
+  allow_failures:
+    - rvm: ruby-head
+      gemfile: gemfiles/rails_40.gemfile
+    - rvm: ruby-head
+      gemfile: gemfiles/rails_41.gemfile
+    - rvm: 2.4.0
+      gemfile: gemfiles/rails_40.gemfile
+    - rvm: 2.4.0
+      gemfile: gemfiles/rails_41.gemfile
 
 script: 'bundle exec rake'

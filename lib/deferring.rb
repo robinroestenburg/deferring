@@ -132,19 +132,20 @@ module Deferring
   private
 
   def generate_deferred_association_methods(association_name, listeners, options = {})
-    inverse_association_name = options[:inverse_association_name]
-    autosave = options.fetch(:autosave, true)
-    type = options.fetch(:type)
-    validate = options.fetch(:validate, true)
-    dependent = options[:dependent]
+    deferred_association_name = :"deferred_#{association_name}"
+    inverse_association_name  = options[:inverse_association_name]
+    autosave                  = options.fetch(:autosave, true)
+    type                      = options.fetch(:type)
+    validate                  = options.fetch(:validate, true)
+    dependent                 = options[:dependent]
 
     # Store the original accessor methods of the association.
     alias_method :"original_#{association_name}", :"#{association_name}"
     alias_method :"original_#{association_name}=", :"#{association_name}="
 
     # Accessor for our own association.
-    define_method :"deferred_#{association_name}" do
-      return instance_variable_get(:"@deferred_#{association_name}") if instance_variable_defined?(:"@deferred_#{association_name}")
+    define_method(deferred_association_name) do
+      return instance_variable_get(:"@#{deferred_association_name}") if instance_variable_defined?(:"@#{deferred_association_name}")
 
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       deferred_association = DeferredAssociation.new(send(:"original_#{association_name}"),
@@ -156,11 +157,11 @@ module Deferring
         deferred_association.add_callback_listener(event_name, callback_method)
       end
 
-      instance_variable_set(:"@deferred_#{association_name}", deferred_association)
+      instance_variable_set(:"@#{deferred_association_name}", deferred_association)
     end
 
-    define_method :"deferred_#{association_name}=" do |deferred_association|
-      instance_variable_set(:"@deferred_#{association_name}", deferred_association)
+    define_method :"#{deferred_association_name}=" do |deferred_association|
+      instance_variable_set(:"@#{deferred_association_name}", deferred_association)
     end
 
     # collection
@@ -169,7 +170,7 @@ module Deferring
     # if none are found.
     # TODO: add force_reload argument?
     define_method :"#{association_name}" do
-      send(:"deferred_#{association_name}")
+      send(deferred_association_name)
     end
 
     # collection=objects
@@ -177,7 +178,7 @@ module Deferring
     # Replaces the collection's content by deleting and adding objects as
     # appropriate.
     define_method :"#{association_name}=" do |objects|
-      send(:"deferred_#{association_name}").objects = objects
+      send(deferred_association_name).objects = objects
     end
 
     # collection_singular_ids=
@@ -189,14 +190,14 @@ module Deferring
       klass = self.class.reflect_on_association(:"#{association_name}").klass
       objects = klass.find(ids.reject(&:blank?))
 
-      send(:"deferred_#{association_name}").objects = objects
+      send(deferred_association_name).objects = objects
     end
 
     # collection_singular_ids
     #
     # Returns an array of the associated objects' ids.
     define_method :"#{association_name.singularize}_ids" do
-      send(:"deferred_#{association_name}").ids
+      send(deferred_association_name).ids
     end
 
     # collection_singular_checked
@@ -207,20 +208,20 @@ module Deferring
       send(:"#{association_name.singularize}_ids=", ids.split(','))
     end
 
-    after_validation :"perform_deferred_#{association_name}_validation!"
-    define_method :"perform_deferred_#{association_name}_validation!" do
+    after_validation :"perform_#{deferred_association_name}_validation!"
+    define_method :"perform_#{deferred_association_name}_validation!" do
       # Do not perform validations for HABTM associations as they are always
       # validated by Rails upon saving.
       return true if type == :habtm
 
       # Do not perform validation when the association has not been loaded
       # (performance improvement).
-      return true unless send(:"deferred_#{association_name}").loaded?
+      return true unless send(deferred_association_name).loaded?
 
       # Do not perform validations when validate: false.
       return true if validate == false
 
-      all_records_valid = send(:"deferred_#{association_name}").objects.inject(true) do |valid, record|
+      all_records_valid = send(deferred_association_name).objects.inject(true) do |valid, record|
         unless record.valid?
           valid = false
           if autosave
@@ -241,22 +242,22 @@ module Deferring
     end
 
     #  the save after the parent object has been saved
-    after_save :"perform_deferred_#{association_name}_save!"
-    define_method :"perform_deferred_#{association_name}_save!" do
+    after_save :"perform_#{deferred_association_name}_save!"
+    define_method :"perform_#{deferred_association_name}_save!" do
       # Send the objects of our delegated association to the original
       # association and store the result.
-      send(:"original_#{association_name}=", send(:"deferred_#{association_name}").objects)
+      send(:"original_#{association_name}=", send(deferred_association_name).objects)
 
       # Store the new value of the association into our delegated association.
       update_deferred_association(association_name, listeners, inverse_association_name, dependent)
     end
 
-    define_method :"reload_with_deferred_#{association_name}" do |*args|
-      send(:"reload_without_deferred_#{association_name}", *args).tap do
+    define_method :"reload_with_#{deferred_association_name}" do |*args|
+      send(:"reload_without_#{deferred_association_name}", *args).tap do
         update_deferred_association(association_name, listeners, inverse_association_name, dependent)
       end
     end
-    alias_method_chain :reload, :"deferred_#{association_name}"
+    alias_method_chain :reload, deferred_association_name
 
     generate_update_deferred_assocation_method
   end
