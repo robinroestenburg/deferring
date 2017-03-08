@@ -171,6 +171,47 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
       end
     end
+
+    describe '#changed_for_autosave?' do
+      it 'return false if nothing has changed' do
+        bob
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(false)
+      end
+
+      it 'does not query anything if the objects have not been loaded' do
+        bob.name = 'James'
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+
+      it 'returns true if there is a pending create' do
+        bob.teams = [dba]
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+
+      it 'returns true if there is a pending delete' do
+        bob.teams = [dba]
+        bob.save!
+
+        bob = Person.where(name: 'Bob').first
+        bob.teams.delete(dba)
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+
+      it 'does not perform any queries if the original association has not been loaded' do
+        bob.teams = [dba]
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+    end
   end
 
   describe 'validating' do
@@ -523,8 +564,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.save!
         bob = Person.where(name: 'Bob').first
 
-        queries = catch_queries { bob.teams.links }
+        unlinks, queries = catch_queries { bob.teams.links }
         expect(queries).to be_empty
+        expect(unlinks).to eq([])
       end
     end
 
@@ -557,8 +599,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.save!
         bob = Person.where(name: 'Bob').first
 
-        queries = catch_queries { bob.teams.unlinks }
+        unlinks, queries = catch_queries { bob.teams.unlinks }
         expect(queries).to be_empty
+        expect(unlinks).to eq([])
       end
     end
   end
@@ -698,20 +741,34 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
     it 'should allow ActiveRecord::QueryMethods' do
       p = Person.first
       p.teams << dba << operations
-      p.save
+      p.save!
       expect(Person.first.teams.where(name: 'Operations').first).to eq(operations)
     end
 
     it 'should find one without loading collection' do
       p = Person.first
       p.teams = [Team.first, Team.find(3)]
-      p.save
-      teams = Person.first.teams
-      expect(teams.loaded?).to eq(false)
-      expect(teams.find(3)).to eq(Team.find(3))
-      expect(teams.first).to eq(Team.first)
-      expect(teams.last).to eq(Team.find(3))
-      expect(teams.loaded?).to eq(false)
+      p.save!
+
+      p = Person.first
+      _, queries = catch_queries { p.teams }
+      expect(queries).to be_empty
+      expect(p.teams.loaded?).to eq(false)
+
+      team, queries = catch_queries { p.teams.find(3) }
+      expect(queries.size).to eq(1)
+      expect(team).to eq(Team.find(3))
+      expect(p.teams.loaded?).to eq(false)
+
+      team, queries = catch_queries { p.teams.first }
+      expect(queries.size).to eq(1)
+      expect(team).to eq(Team.first)
+      expect(p.teams.loaded?).to eq(false)
+
+      team, queries = catch_queries { p.teams.last }
+      expect(queries.size).to eq(1)
+      expect(team).to eq(Team.find(3))
+      expect(p.teams.loaded?).to eq(false)
     end
   end
 end

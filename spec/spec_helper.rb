@@ -32,10 +32,11 @@ end
 def catch_queries(&block)
   queries  = []
   callback = lambda { |name, start, finish, id, payload|
-    puts payload
     queries << payload[:sql] if payload[:sql] =~ /^SELECT|UPDATE|INSERT/
   }
 
-  ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
-  queries
+  result = ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+    yield
+  end
+  [result, queries]
 end

@@ -189,6 +189,12 @@ module Deferring
     end
     alias_method :pending_deletes, :unlinks
 
+    # Returns true if there are links that will be created or deleted when
+    # saving the parent of the association.
+    def changed_for_autosave?
+      links.any? || unlinks.any?
+    end
+
     def add_callback_listener(event_name, callback_method)
       (@listeners ||= []) << DeferredCallbackListener.new(event_name, parent_record, callback_method)
     end

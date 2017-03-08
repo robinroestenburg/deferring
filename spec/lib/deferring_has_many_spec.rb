@@ -63,6 +63,33 @@ RSpec.describe 'deferred has_many associations' do
       expect(bob.issues).to be_empty
     end
 
+    describe '#changed_for_autosave?' do
+      it 'returns true if there is a pending create' do
+        bob.issues = [printer_issue]
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+
+      it 'returns true if there is a pending delete' do
+        bob.issues = [printer_issue]
+        bob.save!
+
+        bob = Person.where(name: 'Bob').first
+        bob.issues.delete(printer_issue)
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+
+      it 'does not perform any queries if the original association has not been loaded' do
+        bob.issues = [printer_issue]
+        changed, queries = catch_queries { bob.changed_for_autosave? }
+        expect(queries).to be_empty
+        expect(changed).to eq(true)
+      end
+    end
+
     describe 'validations' do
       xit 'does not create a link when parent is not valid'
 

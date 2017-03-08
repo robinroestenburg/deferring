@@ -168,7 +168,6 @@ module Deferring
     #
     # Returns an array of all the associated objects. An empty array is returned
     # if none are found.
-    # TODO: add force_reload argument?
     define_method :"#{association_name}" do
       send(deferred_association_name)
     end
@@ -207,6 +206,13 @@ module Deferring
       ids ||= ''
       send(:"#{association_name.singularize}_ids=", ids.split(','))
     end
+
+    # changed_for_autosave?
+    define_method(:"changed_for_autosave_with_#{deferred_association_name}?") do
+      changed = send(:"changed_for_autosave_without_#{deferred_association_name}?")
+      changed || send(deferred_association_name).changed_for_autosave?
+    end
+    alias_method_chain :changed_for_autosave?, deferred_association_name
 
     after_validation :"perform_#{deferred_association_name}_validation!"
     define_method :"perform_#{deferred_association_name}_validation!" do
