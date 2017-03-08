@@ -252,7 +252,10 @@ module Deferring
     define_method :"perform_#{deferred_association_name}_save!" do
       # Send the objects of our delegated association to the original
       # association and store the result.
-      send(:"original_#{association_name}=", send(deferred_association_name).objects)
+      deferred_association = send(deferred_association_name)
+      if deferred_association.send(:objects_loaded?)
+        send(:"original_#{association_name}=", deferred_association.objects)
+      end
 
       # Store the new value of the association into our delegated association.
       update_deferred_association(association_name, listeners, inverse_association_name, dependent)
@@ -285,7 +288,6 @@ module Deferring
       [event_name, callback_method] if callback_method
     end.compact
   end
-
 end
 
 ActiveRecord::Base.send(:extend, Deferring)

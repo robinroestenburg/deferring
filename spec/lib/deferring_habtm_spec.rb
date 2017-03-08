@@ -2,20 +2,32 @@ require 'spec_helper'
 
 RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
-  before :each do
+  before(:example) do
     Person.create!(name: 'Alice')
     Person.create!(name: 'Bob')
 
     Team.create!(name: 'Database Administration')
     Team.create!(name: 'End-User Support')
     Team.create!(name: 'Operations')
+
+    bob; dba; support; operations
   end
 
-  let(:bob) { Person.where(name: 'Bob').first }
+  def bob
+    @bob ||= Person.where(name: 'Bob').first
+  end
 
-  let(:dba) { Team.where(name: 'Database Administration').first }
-  let(:support) { Team.where(name: 'End-User Support').first }
-  let(:operations) { Team.where(name: 'Operations').first }
+  def dba
+    @dba ||= Team.where(name: 'Database Administration').first
+  end
+
+  def support
+    @support ||= Team.where(name: 'End-User Support').first
+  end
+
+  def operations
+    @operations ||= Team.where(name: 'Operations').first
+  end
 
   describe 'deferring' do
     it 'does not create a link until parent is saved' do
@@ -65,6 +77,11 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
       bob.teams.destroy(nil)
       expect(bob.teams).to be_empty
+    end
+
+    it 'does not load the deferred associations when saving the parent' do
+      _, queries = catch_queries { bob.save! }
+      expect(queries.size).to eq(0)
     end
 
     describe '#collection_singular_ids' do
@@ -174,7 +191,6 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
     describe '#changed_for_autosave?' do
       it 'return false if nothing has changed' do
-        bob
         changed, queries = catch_queries { bob.changed_for_autosave? }
         expect(queries).to be_empty
         expect(changed).to eq(false)
