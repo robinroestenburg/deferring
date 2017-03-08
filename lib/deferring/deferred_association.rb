@@ -1,10 +1,7 @@
-# encoding: UTF-8
-
 require 'delegate'
 
 module Deferring
   class DeferredAssociation < SimpleDelegator
-    # TODO: Write tests for enumerable.
     include Enumerable
 
     attr_reader :load_state,
@@ -193,8 +190,8 @@ module Deferring
     end
     alias_method :pending_deletes, :unlinks
 
-    def add_callback_listener(listener)
-      (@listeners ||= []) << listener
+    def add_callback_listener(event_name, callback_method)
+      (@listeners ||= []) << DeferredCallbackListener.new(event_name, parent_record, callback_method)
     end
 
     private
