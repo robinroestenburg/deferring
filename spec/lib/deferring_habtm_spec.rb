@@ -18,10 +18,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
   let(:operations) { Team.where(name: 'Operations').first }
 
   describe 'deferring' do
-
     it 'does not create a link until parent is saved' do
       bob.teams << dba << support
-      expect{ bob.save! }.to change{ Person.find(bob.id).teams.size }.from(0).to(2)
+      expect { bob.save! }.to change { Person.find(bob.id).teams.size }.from(0).to(2)
     end
 
     it 'does not unlink until parent is saved' do
@@ -33,14 +32,14 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         Team.find(operations.id)
       ])
 
-      expect{ bob.save }.to change{ Person.find(bob.id).teams.size }.from(3).to(1)
+      expect { bob.save }.to change { Person.find(bob.id).teams.size }.from(3).to(1)
     end
 
     it 'does not create a link when parent is not valid' do
       bob.name = nil # Person.name should be present, Person should not be saved.
       bob.teams << dba
 
-      expect{ bob.save }.not_to change{ Person.find(bob.id).teams.size }
+      expect { bob.save }.not_to change { Person.find(bob.id).teams.size }
     end
 
     it 'replaces existing records when assigning a new set of records' do
@@ -51,7 +50,7 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
       # The initial assignment of Bob to the DBA team did not get saved, so
       # at this moment Bob is not assigned to any team in the database.
-      expect{ bob.save }.to change{ Person.find(bob.id).teams.size }.from(0).to(2)
+      expect { bob.save }.to change { Person.find(bob.id).teams.size }.from(0).to(2)
     end
 
     it 'drops nil records' do
@@ -69,22 +68,19 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
     end
 
     describe '#collection_singular_ids' do
-
       it 'returns ids of saved & unsaved associated records' do
         bob.teams = [dba, operations]
         expect(bob.team_ids.size).to eq(2)
         expect(bob.team_ids).to eq [dba.id, operations.id]
 
-        expect{ bob.save }.to change{ Person.find(bob.id).team_ids.size }.from(0).to(2)
+        expect { bob.save }.to change { Person.find(bob.id).team_ids.size }.from(0).to(2)
 
         expect(bob.team_ids.size).to eq(2)
         expect(bob.team_ids).to eq [dba.id, operations.id]
       end
-
     end
 
     describe '#collections_singular_ids=' do
-
       it 'sets associated records' do
         bob.team_ids = [dba.id, operations.id]
         bob.save
@@ -105,14 +101,14 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.team_ids = [support.id, operations.id]
         expect(bob.teams.length).to eq(2)
 
-        expect{ bob.save }.to change{ Person.find(bob.id).teams.size }.from(0).to(2)
+        expect { bob.save }.to change { Person.find(bob.id).teams.size }.from(0).to(2)
       end
 
       it 'clears empty values from the ids to be assigned' do
         bob.team_ids = [dba.id, '']
         expect(bob.teams.length).to eq(1)
 
-        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(0).to(1)
+        expect { bob.save }.to change { Person.where(name: 'Bob').first.teams.size }.from(0).to(1)
       end
 
       it 'unlinks all records when assigning empty array' do
@@ -122,7 +118,7 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.team_ids = []
         expect(bob.teams.length).to eq(0)
 
-        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
+        expect { bob.save }.to change { Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
       end
 
       it 'unlinks all records when assigning nil' do
@@ -132,15 +128,14 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.team_ids = nil
         expect(bob.teams.length).to eq(0)
 
-        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
+        expect { bob.save }.to change { Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
       end
     end
 
     describe '#collection_checked=' do
-
       it 'set associated records' do
         bob.teams_checked = "#{dba.id},#{operations.id}"
-        expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(0).to(2)
+        expect { bob.save }.to change { Person.where(name: 'Bob').first.teams.size }.from(0).to(2)
       end
 
       it 'replace existing records when assigning a new set of ids of records' do
@@ -175,13 +170,10 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
         expect{ bob.save }.to change{ Person.where(name: 'Bob').first.teams.size }.from(2).to(0)
       end
-
     end
-
   end
 
   describe 'validating' do
-
     xit 'does not add duplicate values' do
       pending 'uniq does not work correctly yet' do
         dba = Team.first
@@ -228,11 +220,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect(alice.teams.size).to eq 1
       end
     end
-
   end
 
   describe 'preloading' do
-
     before do
       bob.teams << dba << support
       bob.save!
@@ -260,11 +250,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       person = Person.where(name: 'Bob').first
       expect(person.teams.loaded?).to be_falsey
     end
-
   end
 
   describe 'reloading' do
-
     before do
       bob.teams << operations
       bob.save!
@@ -304,7 +292,6 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
   end
 
   describe 'resetting' do
-
     before do
       bob.teams << operations
       bob.save!
@@ -331,11 +318,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       bob.teams.reset
       expect(bob.teams).to eq [operations, dba]
     end
-
   end
 
   describe 'enumerable methods that conflict with ActiveRecord' do
-
     describe '#select' do
       before do
         bob.teams << dba << support << operations
@@ -362,11 +347,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
     describe 'first' do
       # TODO: Write some tests.
     end
-
   end
 
   describe 'callbacks' do
-
     before(:example) do
       bob = Person.where(name: 'Bob').first
       bob.teams = [Team.find(3)]
@@ -487,26 +470,23 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         'Before adding new team',  'After adding team 4'
       ])
     end
-
   end
 
-  describe 'pending creates & deletes (aka links and unlinks)' do
-
-    describe 'pending creates' do
-
+  describe 'links & unlinks (aka pending creates and deletes)' do
+    describe 'links' do
       it 'returns newly build records' do
         bob.teams.build(name: 'Service Desk')
-        expect(bob.teams.pending_creates.size).to eq(1)
+        expect(bob.teams.links.size).to eq(1)
       end
 
       it 'does not return newly created records' do
         bob.teams.create!(name: 'Service Desk')
-        expect(bob.teams.pending_creates).to be_empty
+        expect(bob.teams.links).to be_empty
       end
 
       it 'returns associated records that need to be linked to parent' do
         bob.teams = [dba]
-        expect(bob.teams.pending_creates).to eq [dba]
+        expect(bob.teams.links).to eq [dba]
       end
 
       it 'does not return associated records that already have a link' do
@@ -515,8 +495,8 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
 
         bob.teams << operations
 
-        expect(bob.teams.pending_creates).to_not include dba
-        expect(bob.teams.pending_creates).to include operations
+        expect(bob.teams.links).to_not include dba
+        expect(bob.teams.links).to include operations
       end
 
       it 'does not return associated records that are to be deleted' do
@@ -524,7 +504,7 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.save!
         bob.teams.delete(dba)
 
-        expect(bob.teams.pending_creates).to be_empty
+        expect(bob.teams.links).to be_empty
       end
 
       it 'does not return a record that has just been removed (and has not been saved)' do
@@ -534,42 +514,56 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         bob.teams.delete(dba)
         bob.teams << dba
 
-        expect(bob.teams.pending_deletes).to be_empty
-        expect(bob.teams.pending_creates).to be_empty
+        expect(bob.teams.unlinks).to be_empty
+        expect(bob.teams.links).to be_empty
+      end
+
+      it 'does not load the objects if the original association has not been loaded' do
+        bob.teams = [dba, operations]
+        bob.save!
+        bob = Person.where(name: 'Bob').first
+
+        queries = catch_queries { bob.teams.links }
+        expect(queries).to be_empty
       end
     end
 
-    describe 'pending deletes' do
-
+    describe 'unlinks' do
       it 'returns associated records that need to be unlinked from parent' do
         bob.teams = [dba]
         bob.save!
         bob.teams.delete(dba)
 
-        expect(bob.teams.pending_deletes).to eq [dba]
+        expect(bob.teams.unlinks).to eq [dba]
       end
 
       it 'returns an empty array when no records are to be deleted' do
         bob.teams = [dba]
         bob.save!
 
-        expect(bob.teams.pending_deletes).to be_empty
+        expect(bob.teams.unlinks).to be_empty
       end
 
       it 'does not return a record that has just been added (and has not been saved)' do
         bob.teams = [dba]
         bob.teams.delete(dba)
 
-        expect(bob.teams.pending_deletes).to be_empty
-        expect(bob.teams.pending_creates).to be_empty
+        expect(bob.teams.unlinks).to be_empty
+        expect(bob.teams.links).to be_empty
       end
 
-    end
+      it 'does not load the objects if the original association has not been loaded' do
+        bob.teams = [dba, operations]
+        bob.save!
+        bob = Person.where(name: 'Bob').first
 
+        queries = catch_queries { bob.teams.unlinks }
+        expect(queries).to be_empty
+      end
+    end
   end
 
   describe 'active record api' do
-
     # it 'should execute first on deferred association' do
     #   p = Person.first
     #   p.team_ids = [dba.id, support.id, operations.id]
@@ -587,7 +581,6 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
     # end
 
     describe '#build' do
-
       it 'builds a new record' do
         p = Person.first
         p.teams.build(name: 'Service Desk')
@@ -595,11 +588,9 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect(p.teams[0]).to be_new_record
         expect{ p.save }.to change{ Person.first.teams.count }.from(0).to(1)
       end
-
     end
 
     describe '#create!' do
-
       it 'should create a persisted record' do
         p = Person.first
         p.teams.create!(:name => 'Service Desk')
@@ -612,7 +603,6 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
         expect(Person.first.teams.size).to eq(1)
         expect{ p.save }.to_not change{ Person.first.teams.count }
       end
-
     end
 
     describe '#destroy' do
@@ -723,7 +713,5 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
       expect(teams.last).to eq(Team.find(3))
       expect(teams.loaded?).to eq(false)
     end
-
   end
-
 end

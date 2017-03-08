@@ -26,5 +26,16 @@ RSpec.configure do |config|
       raise ActiveRecord::Rollback
     end
   end
+end
 
+# Catch queries executed within the &block
+def catch_queries(&block)
+  queries  = []
+  callback = lambda { |name, start, finish, id, payload|
+    puts payload
+    queries << payload[:sql] if payload[:sql] =~ /^SELECT|UPDATE|INSERT/
+  }
+
+  ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+  queries
 end

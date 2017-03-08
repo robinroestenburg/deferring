@@ -184,7 +184,6 @@ module Deferring
     # Returns the associated records to which the links will be deleted after
     # saving the parent of the assocation.
     def unlinks
-      # TODO: Write test for it.
       return [] unless objects_loaded?
       original_objects - objects
     end
