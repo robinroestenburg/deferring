@@ -13,3 +13,7 @@ end
 appraise 'rails-50' do
   gem 'activerecord', '5.0.2'
 end
+
+appraise 'rails-51' do
+  gem 'activerecord', '5.1.4'
+end

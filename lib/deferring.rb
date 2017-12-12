@@ -207,12 +207,19 @@ module Deferring
       send(:"#{association_name.singularize}_ids=", ids.split(','))
     end
 
-    # changed_for_autosave?
-    define_method(:"changed_for_autosave_with_#{deferred_association_name}?") do
-      changed = send(:"changed_for_autosave_without_#{deferred_association_name}?")
-      changed || send(deferred_association_name).changed_for_autosave?
-    end
-    alias_method_chain :changed_for_autosave?, deferred_association_name
+    # Prepend #changed_for_autosave? and #reload methods to extend existing
+    # behavior in ActiveRecord.
+    self.prepend(Module.new do
+      define_method :changed_for_autosave? do
+        super() || send(deferred_association_name).changed_for_autosave?
+      end
+
+      define_method :reload do |*args|
+        super(*args).tap do
+          update_deferred_association(association_name, listeners, inverse_association_name, dependent)
+        end
+      end
+    end)
 
     after_validation :"perform_#{deferred_association_name}_validation!"
     define_method :"perform_#{deferred_association_name}_validation!" do
@@ -260,13 +267,6 @@ module Deferring
       # Store the new value of the association into our delegated association.
       update_deferred_association(association_name, listeners, inverse_association_name, dependent)
     end
-
-    define_method :"reload_with_#{deferred_association_name}" do |*args|
-      send(:"reload_without_#{deferred_association_name}", *args).tap do
-        update_deferred_association(association_name, listeners, inverse_association_name, dependent)
-      end
-    end
-    alias_method_chain :reload, deferred_association_name
 
     generate_update_deferred_assocation_method
   end
