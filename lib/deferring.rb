@@ -261,7 +261,12 @@ module Deferring
       # association and store the result.
       deferred_association = send(deferred_association_name)
       if deferred_association.send(:objects_loaded?)
-        send(:"original_#{association_name}=", deferred_association.objects)
+        send(:"original_#{association_name}").delete(deferred_association.unlinks)
+        unless send(:"original_#{association_name}").push(deferred_association.links)
+          raise ActiveRecord::RecordNotSaved,
+            "Failed to replace #{association_name} because one or more of " \
+            "the new records could not be saved."
+        end
       end
 
       # Store the new value of the association into our delegated association.
