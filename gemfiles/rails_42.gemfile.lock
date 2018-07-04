@@ -1,5 +1,5 @@
 PATH
-  remote: ../
+  remote: ..
   specs:
     deferring (0.4.1)
       activerecord (> 4.0)
@@ -61,4 +61,4 @@ DEPENDENCIES
   sqlite3
 
 BUNDLED WITH
-   1.13.0
+   1.16.2
