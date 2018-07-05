@@ -1,8 +1,8 @@
 PATH
-  remote: ../
+  remote: ..
   specs:
     deferring (0.4.1)
-      activerecord (> 4.0)
+      activerecord (> 4.0, < 5.3)
 
 GEM
   remote: https://rubygems.org/
@@ -60,4 +60,4 @@ DEPENDENCIES
   sqlite3
 
 BUNDLED WITH
-   1.13.0
+   1.16.2
