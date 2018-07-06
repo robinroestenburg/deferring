@@ -2,7 +2,7 @@ PATH
   remote: ..
   specs:
     deferring (0.4.1)
-      activerecord (> 4.0, < 5.3)
+      activerecord (>= 4.2, < 5.3)
 
 GEM
   remote: https://rubygems.org/
