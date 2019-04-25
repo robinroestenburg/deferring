@@ -14,6 +14,6 @@ appraise 'rails-52' do
   gem 'activerecord', '5.2.0'
 end
 
-appraise 'rails-edge' do
-  gem 'activerecord', github: 'rails/rails', branch: 'master'
+appraise 'rails-60' do
+  gem 'activerecord', '6.0.0rc1'
 end
