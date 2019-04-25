@@ -131,7 +131,7 @@ module Deferring
     def destroy(*records)
       records.flatten.compact.uniq.each do |record|
         record = record.to_i if record.is_a? String
-        record = objects.detect { |o| o.id == record } if record.is_a? Fixnum
+        record = objects.detect { |o| o.id == record } if record.is_a? Integer
 
         run_deferring_callbacks(:unlink, record) {
           objects.delete(record)
