@@ -3,7 +3,7 @@ language: ruby
 rvm:
   - 2.3.8
   - 2.4.6
-  - 2.5.4
+  - 2.5.5
   - 2.6.3
 
 gemfile:
@@ -22,4 +22,14 @@ matrix:
   - rvm: 2.3.8
     gemfile: gemfiles/rails_60.gemfile
   - rvm: 2.4.6
+    gemfile: gemfiles/rails_60.gemfile
+  - rvm: 2.5.5
+    gemfile: gemfiles/rails_42.gemfile
+  - rvm: 2.5.5
+    gemfile: gemfiles/rails_50.gemfile
+  - rvm: 2.5.5
+    gemfile: gemfiles/rails_51.gemfile
+  - rvm: 2.5.5
+    gemfile: gemfiles/rails_52.gemfile
+  - rvm: 2.5.5
     gemfile: gemfiles/rails_60.gemfile
