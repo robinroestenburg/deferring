@@ -47,6 +47,7 @@ module Deferring
     # association.
     delegate :[]=, :[], :clear, :select!, :reject!, :flatten, :flatten!, :sort!,
              :keep_if, :delete_if, :sort_by!, :empty?, :size, :length,
+             :each_index,
              to: :objects
 
     # Delegates Ruby's Enumerable#find method to the original association.

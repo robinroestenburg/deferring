@@ -377,6 +377,19 @@ RSpec.describe 'deferred has_and_belongs_to_many associations' do
     end
   end
 
+  describe 'supports methods from Ruby Array' do
+    describe '#each_index' do
+      it 'returns the index of each element in the association' do
+        bob.teams << dba << support
+        bob.save!
+
+        result = []
+        bob.teams.each_index { |i| result << i }
+        expect(result).to eq([0, 1])
+      end
+    end
+  end
+
   describe 'enumerable methods that conflict with ActiveRecord' do
     describe '#select' do
       before do
