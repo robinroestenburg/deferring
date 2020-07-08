@@ -65,9 +65,9 @@ module Deferring
     #
     # The delegation has to be explicit in this case, because the inclusion of
     # Enumerable also defines the select-method on DeferredAssociation.
-    def select(value = Proc.new)
+    def select(value = nil, &block)
       if block_given?
-        objects.select { |*block_args| value.call(*block_args) }
+        objects.select { |*block_args| block.call(*block_args) }
       else
         original_association.select(value)
       end
