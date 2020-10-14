@@ -5,6 +5,7 @@ require 'support/models/team'
 require 'support/models/issue'
 require 'support/models/address'
 require 'support/models/non_validated_issue'
+require 'support/matchers/query_matcher'
 
 RSpec.configure do |config|
   config.disable_monkey_patching!
@@ -17,6 +18,8 @@ RSpec.configure do |config|
   # the seed, which is printed after each run.
   #     --seed 1234
   config.order = 'random'
+
+  config.include(Deferring::Matchers)
 
   # Rollback all the database changes after each spec, poor man's
   # DatabaseCleaner :-)

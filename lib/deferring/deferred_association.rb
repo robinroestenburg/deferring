@@ -33,7 +33,7 @@ module Deferring
     end
 
     # TODO: Add explanation about :first/:last loaded? problem.
-    [:first, :last].each do |method|
+    [:first, :last, :empty?, :size].each do |method|
       define_method method do
         unless objects_loaded?
           original_association.send(method)
@@ -46,7 +46,7 @@ module Deferring
     # Delegates methods from Ruby's Array module to the object in the deferred
     # association.
     delegate :[]=, :[], :clear, :select!, :reject!, :flatten, :flatten!, :sort!,
-             :keep_if, :delete_if, :sort_by!, :empty?, :size, :length,
+             :keep_if, :delete_if, :sort_by!, :length,
              :each_index,
              to: :objects
 
@@ -56,6 +56,14 @@ module Deferring
     # Enumerable also defines the find-method on DeferredAssociation.
     def find(*args)
       original_association.find(*args)
+    end
+
+    # Delegates Ruby's Enumerable#count method to the original association.
+    #
+    # The delegation has to be explicit in this case, because the inclusion of
+    # Enumerable also defines the count-method on DeferredAssociation.
+    def count(*args)
+      original_association.count(*args)
     end
 
     # Delegates Ruby's Enumerable#select method to the original association when

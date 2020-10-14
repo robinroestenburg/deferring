@@ -359,6 +359,58 @@ RSpec.describe 'deferred has_many associations' do
       people = Person.all
       expect(people[1].issues.loaded?).to be_falsey
     end
+
+    describe 'count' do
+      it 'should not load the association' do
+        person = Person.where(name: 'Bob').first
+        expect(person.issues.count).to eq(2)
+        expect(person.issues.loaded?).to be_falsey
+      end
+
+      it 'should execute a count(*) query, even if the association has already been loaded' do
+        person = Person.where(name: 'Bob').first
+        expect { person.issues.count }.to query(1) { |sql| expect(sql).to include('SELECT COUNT(*) FROM "issues"') }
+        expect { person.issues.to_a }.to query(1)
+        expect(person.issues.loaded?).to be_truthy
+        expect { person.issues.to_a }.to query(0)
+        expect { person.issues.count }.to query(1) { |sql| expect(sql).to include('SELECT COUNT(*) FROM "issues"') }
+      end
+    end
+
+    describe 'size' do
+      it 'should not load the association' do
+        person = Person.where(name: 'Bob').first
+        expect(person.issues.size).to eq(2)
+        expect { person.issues.size }.to query(1) { |sql| expect(sql).to include('SELECT COUNT(*) FROM "issues"') }
+        expect(person.issues.loaded?).to be_falsey
+      end
+
+      it 'should not execute query when the association has already been loaded' do
+        person = Person.where(name: 'Bob').first
+        expect { person.issues.size }.to query(1) { |sql| expect(sql).to include('SELECT COUNT(*) FROM "issues"') }
+        expect { person.issues.to_a }.to query(1)
+        expect(person.issues.loaded?).to be_truthy
+        expect { person.issues.to_a }.to query(0)
+        expect { person.issues.size }.to query(0)
+      end
+    end
+
+    describe 'empty?' do
+      it 'should not load the association' do
+        person = Person.where(name: 'Bob').first
+        expect(person.issues.empty?).to be_falsey
+        expect(person.issues.loaded?).to be_falsey
+      end
+
+      it 'should not execute query when the association has already been loaded' do
+        person = Person.where(name: 'Bob').first
+        expect { person.issues.empty? }.to query(1) { |sql| expect(sql).to include('SELECT 1') }
+        expect { person.issues.to_a }.to query(1)
+        expect(person.issues.loaded?).to be_truthy
+        expect { person.issues.to_a }.to query(0)
+        expect { person.issues.empty? }.to query(0)
+      end
+    end
   end # preloading associations
 
   describe 'active record api' do
