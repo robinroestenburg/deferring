@@ -375,6 +375,11 @@ RSpec.describe 'deferred has_many associations' do
         expect { person.issues.to_a }.to query(0)
         expect { person.issues.count }.to query(1) { |sql| expect(sql).to include('SELECT COUNT(*) FROM "issues"') }
       end
+
+      it 'should execute count with a block' do
+        person = Person.where(name: 'Bob').first
+        expect(person.issues.count { |i| i.subject.start_with?('Printer') }).to eq(1)
+      end
     end
 
     describe 'size' do

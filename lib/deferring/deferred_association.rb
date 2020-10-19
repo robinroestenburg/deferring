@@ -62,8 +62,12 @@ module Deferring
     #
     # The delegation has to be explicit in this case, because the inclusion of
     # Enumerable also defines the count-method on DeferredAssociation.
-    def count(*args)
-      original_association.count(*args)
+    def count(*args, &block)
+      if block_given?
+        objects.count(*args, &block)
+      else
+        original_association.count(*args)
+      end
     end
 
     # Delegates Ruby's Enumerable#select method to the original association when
