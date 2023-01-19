@@ -238,10 +238,17 @@ module Deferring
         unless record.valid?
           valid = false
           if autosave
-            record.errors.each do |attribute, message|
-              attribute = "#{association_name}.#{attribute}"
-              errors[attribute] << message
-              errors[attribute].uniq!
+            if ActiveRecord::VERSION::MAJOR == 6 && ActiveRecord::VERSION::MINOR == 1
+              record.errors.each do |error|
+                attribute = "#{association_name}.#{error.attribute}"
+                errors.add(attribute, error.message) unless errors.added?(attribute, error.message)
+              end
+            else
+              record.errors.each do |attribute, message|
+                attribute = "#{association_name}.#{attribute}"
+                errors[attribute] << message
+                errors[attribute].uniq!
+              end
             end
           else
             errors.add(association_name)
