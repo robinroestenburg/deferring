@@ -14,7 +14,7 @@ module Deferring
     autosave = options.fetch(:autosave, true)
     validate = options.fetch(:validate, true)
 
-    has_and_belongs_to_many(*args, options)
+    has_and_belongs_to_many(*args, **options)
     generate_deferred_association_methods(
       args.first.to_s,
       listeners,
@@ -34,7 +34,7 @@ module Deferring
     autosave = options.fetch(:autosave, true)
     validate = options.fetch(:validate, true)
 
-    has_many(*args, options)
+    has_many(*args, **options)
     generate_deferred_association_methods(
       args.first.to_s,
       listeners,
