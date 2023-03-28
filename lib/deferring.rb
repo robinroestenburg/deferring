@@ -239,9 +239,13 @@ module Deferring
           valid = false
           if autosave
             if ActiveRecord::VERSION::MAJOR == 6 && ActiveRecord::VERSION::MINOR == 1
-              record.errors.each do |error|
-                attribute = "#{association_name}.#{error.attribute}"
-                errors.add(attribute, error.message) unless errors.added?(attribute, error.message)
+              record.errors.group_by_attribute.each do |attribute, errors|
+                errors.each do |error|
+                  self.errors.import(
+                    error,
+                    attribute: "#{association_name}.#{attribute}"
+                  )
+                end
               end
             else
               record.errors.each do |attribute, message|
