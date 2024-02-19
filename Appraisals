@@ -22,3 +22,8 @@ appraise 'rails-61' do
   gem 'activerecord', '6.1.7.1'
   gem 'sqlite3'
 end
+
+appraise 'rails-70' do
+  gem 'activerecord', '7.0.8'
+  gem 'sqlite3'
+end
