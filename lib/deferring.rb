@@ -238,7 +238,13 @@ module Deferring
         unless record.valid?
           valid = false
           if autosave
-            if ActiveRecord::VERSION::MAJOR == 6 && ActiveRecord::VERSION::MINOR == 1
+            if ActiveRecord.version.release < Gem::Version.new('6.1.0')
+              record.errors.each do |attribute, message|
+                attribute = "#{association_name}.#{attribute}"
+                errors[attribute] << message
+                errors[attribute].uniq!
+              end
+            else # >= Rails 6.1
               record.errors.group_by_attribute.each do |attribute, errors|
                 errors.each do |error|
                   self.errors.import(
@@ -246,12 +252,6 @@ module Deferring
                     attribute: "#{association_name}.#{attribute}"
                   )
                 end
-              end
-            else
-              record.errors.each do |attribute, message|
-                attribute = "#{association_name}.#{attribute}"
-                errors[attribute] << message
-                errors[attribute].uniq!
               end
             end
           else
